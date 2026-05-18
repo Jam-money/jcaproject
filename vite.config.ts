@@ -4,4 +4,9 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server", preset: "node" },
   },
+  vite: {
+    build: {
+      outDir: "dist/client",
+    },
+  },
 });
