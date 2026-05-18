@@ -20,15 +20,14 @@ function LoginPage() {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between gradient-primary text-primary-foreground p-12">
         <div className="flex items-center gap-2 text-lg font-semibold">
-          <CalendarCheck2 className="h-6 w-6" /> RD Office
+          <CalendarCheck2 className="h-6 w-6" /> ORD
         </div>
         <div>
-          <h1 className="text-4xl font-bold leading-tight">Run the Regional Director's office with calm and clarity.</h1>
-          <p className="mt-4 text-primary-foreground/85 max-w-md">
-            Schedules, meetings and tasks — coordinated between the Director and the Secretariat in one professional workspace.
-          </p>
+          <h1 className="text-4xl font-bold leading-tight">Schedules, meetings and tasks in one platform.</h1>
         </div>
-        <div className="text-xs text-primary-foreground/70">© {new Date().getFullYear()} Regional Director's Office</div>
+        <div className="text-xs text-primary-foreground/70">
+          <p>© {new Date().getFullYear()} Office of the Regional Director</p>
+        </div>
       </div>
 
       <div className="flex items-center justify-center p-6 sm:p-12 bg-background">
