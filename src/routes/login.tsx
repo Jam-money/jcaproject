@@ -34,7 +34,7 @@ function LoginPage() {
         <Card className="w-full max-w-md p-8 shadow-elevated animate-fade-in-up">
           <div className="flex items-center gap-2 mb-6 lg:hidden">
             <CalendarCheck2 className="h-6 w-6 text-primary" />
-            <span className="font-semibold">RD Office</span>
+            <span className="font-semibold">ORD</span>
           </div>
           <h2 className="text-2xl font-semibold">Welcome</h2>
           <p className="text-sm text-muted-foreground mb-6">Sign in to access your dashboard.</p>

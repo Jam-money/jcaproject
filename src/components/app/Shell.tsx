@@ -50,7 +50,7 @@ export function Shell() {
         <div className="h-16 flex items-center justify-between px-5 border-b border-sidebar-border">
           <Link to="/dashboard" className="flex items-center gap-2 font-semibold">
             <span className="grid place-items-center h-8 w-8 rounded-lg bg-primary text-primary-foreground"><CalendarCheck2 className="h-4 w-4"/></span>
-            RD Office
+            ORD
           </Link>
           <button className="lg:hidden" onClick={()=>setOpen(false)} aria-label="Close menu"><X className="h-5 w-5"/></button>
         </div>
