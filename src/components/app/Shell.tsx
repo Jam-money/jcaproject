@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, Calendar, KanbanSquare, Users2, Bell, FileBarChart2,
+  LayoutDashboard, Calendar, Users2, Bell, FileBarChart2,
   UserCircle2, LogOut, Sun, Moon, Menu, X, CalendarCheck2, Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/calendar", label: "Calendar", icon: Calendar },
-  { to: "/tasks", label: "Tasks", icon: KanbanSquare },
   { to: "/meetings", label: "Meetings", icon: Users2 },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/reports", label: "Reports", icon: FileBarChart2 },
@@ -90,7 +89,7 @@ export function Shell() {
           <button className="lg:hidden p-2 -ml-2" onClick={()=>setOpen(true)} aria-label="Open menu"><Menu className="h-5 w-5"/></button>
           <div className="flex-1 max-w-md relative hidden sm:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
-            <input placeholder="Search tasks, events…" className="w-full h-10 pl-9 pr-3 rounded-lg bg-muted border border-transparent focus:border-ring focus:outline-none text-sm" />
+            <input placeholder="Search events…" className="w-full h-10 pl-9 pr-3 rounded-lg bg-muted border border-transparent focus:border-ring focus:outline-none text-sm" />
           </div>
           <div className="flex-1 sm:hidden" />
           <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">

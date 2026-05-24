@@ -47,6 +47,7 @@ export type Database = {
       events: {
         Row: {
           attachment_url: string | null
+          attendees: Json | null
           created_at: string
           created_by: string
           description: string | null
@@ -54,13 +55,20 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           location: string | null
+          meeting_link: string | null
           notes: string | null
+          proposed_end: string | null
+          proposed_note: string | null
+          proposed_start: string | null
+          rsvp_notes: Json | null
+          rsvp_responses: Json | null
           start_time: string
           title: string
           updated_at: string
         }
         Insert: {
           attachment_url?: string | null
+          attendees?: Json | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -68,13 +76,20 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           location?: string | null
+          meeting_link?: string | null
           notes?: string | null
+          proposed_end?: string | null
+          proposed_note?: string | null
+          proposed_start?: string | null
+          rsvp_notes?: Json | null
+          rsvp_responses?: Json | null
           start_time: string
           title: string
           updated_at?: string
         }
         Update: {
           attachment_url?: string | null
+          attendees?: Json | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -82,7 +97,13 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           location?: string | null
+          meeting_link?: string | null
           notes?: string | null
+          proposed_end?: string | null
+          proposed_note?: string | null
+          proposed_start?: string | null
+          rsvp_notes?: Json | null
+          rsvp_responses?: Json | null
           start_time?: string
           title?: string
           updated_at?: string
@@ -260,7 +281,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "director"
-      event_type: "meeting" | "event" | "schedule"
+      event_type: "meeting" | "event" | "schedule" | "staff_meeting" | "training" | "field_supervision" | "data_dissemination" | "press_conference" | "official_business" | "interagency_meeting" | "courtesy_visit" | "lcro_audit" | "on_leave"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status: "pending" | "ongoing" | "completed"
     }
@@ -391,7 +412,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "director"],
-      event_type: ["meeting", "event", "schedule"],
+      event_type: ["meeting", "event", "schedule", "staff_meeting", "training", "field_supervision", "data_dissemination", "press_conference", "official_business", "interagency_meeting", "courtesy_visit", "lcro_audit", "on_leave"],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: ["pending", "ongoing", "completed"],
     },

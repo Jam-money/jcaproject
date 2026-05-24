@@ -10,6 +10,7 @@ import { format, parseISO, isPast } from "date-fns";
 import { EventDialog } from "@/components/app/EventDialog";
 import { useAuth } from "@/lib/auth";
 import type { EventRow } from "@/lib/db";
+import { EVENT_TYPE_LABELS } from "@/lib/db";
 
 export const Route = createFileRoute("/_app/meetings")({ component: Meetings });
 
@@ -74,7 +75,7 @@ function MeetingCard({ ev, onClick, muted }: { ev: EventRow; onClick: () => void
     <Card onClick={onClick} className={`p-4 cursor-pointer hover:shadow-elevated transition-all shadow-soft ${muted ? "opacity-70" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-medium">{ev.title}</h3>
-        <Badge variant="outline" className="capitalize shrink-0">{ev.event_type}</Badge>
+        <Badge variant="outline" className="shrink-0">{EVENT_TYPE_LABELS[ev.event_type] ?? ev.event_type}</Badge>
       </div>
       <div className="mt-2 space-y-1 text-xs text-muted-foreground">
         <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5"/>{format(parseISO(ev.start_time),"EEE, MMM d · p")} – {format(parseISO(ev.end_time),"p")}</div>
