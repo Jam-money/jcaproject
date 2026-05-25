@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ export const Route = createFileRoute("/_app/notifications")({ component: Notific
 
 function Notifications() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
   useEffect(() => {
     if (!user) return;
@@ -26,6 +27,15 @@ function Notifications() {
   const markAll = async () => {
     if (!user) return;
     await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false);
+    setItems(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleClick = async (n: any) => {
+    if (!n.read) {
+      await supabase.from("notifications").update({ read: true }).eq("id", n.id);
+      setItems(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+    }
+    if (n.link) void navigate({ to: n.link });
   };
 
   return (
@@ -39,15 +49,21 @@ function Notifications() {
       )}
       <div className="space-y-2">
         {items.map(n => (
-          <Card key={n.id} className={`p-4 flex items-start gap-3 ${n.read ? "opacity-70" : ""}`}>
-            <span className={`mt-1.5 h-2 w-2 rounded-full ${n.read ? "bg-muted-foreground" : "bg-primary"}`}/>
+          <Card
+            key={n.id}
+            onClick={() => handleClick(n)}
+            className={[
+              "p-4 flex items-start gap-3 transition-colors",
+              n.link ? "cursor-pointer hover:bg-muted/50" : "",
+              !n.read ? "bg-primary/5 border-primary/30 shadow-sm" : "opacity-70",
+            ].join(" ")}>
+            <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${n.read ? "bg-muted-foreground/40" : "bg-primary"}`}/>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <div className="font-medium">{n.title}</div>
-                <div className="text-xs text-muted-foreground">{format(parseISO(n.created_at), "MMM d, p")}</div>
+                <div className={`font-medium ${!n.read ? "text-foreground" : "text-muted-foreground"}`}>{n.title}</div>
+                <div className="text-xs text-muted-foreground shrink-0">{format(parseISO(n.created_at), "MMM d, p")}</div>
               </div>
               {n.body && <p className="text-sm text-muted-foreground mt-1">{n.body}</p>}
-              {n.link && <Link to={n.link} className="text-xs text-primary hover:underline mt-1 inline-block">Open</Link>}
             </div>
           </Card>
         ))}

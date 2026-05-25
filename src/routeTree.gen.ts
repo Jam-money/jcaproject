@@ -16,6 +16,7 @@ import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppReportsRouteImport } from './routes/_app/reports'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
+import { Route as AppMsorafRouteImport } from './routes/_app/msoraf'
 import { Route as AppMeetingsRouteImport } from './routes/_app/meetings'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
@@ -54,6 +55,11 @@ const AppNotificationsRoute = AppNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMsorafRoute = AppMsorafRouteImport.update({
+  id: '/msoraf',
+  path: '/msoraf',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMeetingsRoute = AppMeetingsRouteImport.update({
   id: '/meetings',
   path: '/meetings',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof AppCalendarRoute
   '/dashboard': typeof AppDashboardRoute
   '/meetings': typeof AppMeetingsRoute
+  '/msoraf': typeof AppMsorafRoute
   '/notifications': typeof AppNotificationsRoute
   '/profile': typeof AppProfileRoute
   '/reports': typeof AppReportsRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof AppCalendarRoute
   '/dashboard': typeof AppDashboardRoute
   '/meetings': typeof AppMeetingsRoute
+  '/msoraf': typeof AppMsorafRoute
   '/notifications': typeof AppNotificationsRoute
   '/profile': typeof AppProfileRoute
   '/reports': typeof AppReportsRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/meetings': typeof AppMeetingsRoute
+  '/_app/msoraf': typeof AppMsorafRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/reports': typeof AppReportsRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/dashboard'
     | '/meetings'
+    | '/msoraf'
     | '/notifications'
     | '/profile'
     | '/reports'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/dashboard'
     | '/meetings'
+    | '/msoraf'
     | '/notifications'
     | '/profile'
     | '/reports'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/_app/calendar'
     | '/_app/dashboard'
     | '/_app/meetings'
+    | '/_app/msoraf'
     | '/_app/notifications'
     | '/_app/profile'
     | '/_app/reports'
@@ -199,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/msoraf': {
+      id: '/_app/msoraf'
+      path: '/msoraf'
+      fullPath: '/msoraf'
+      preLoaderRoute: typeof AppMsorafRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/meetings': {
       id: '/_app/meetings'
       path: '/meetings'
@@ -227,6 +246,7 @@ interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
+  AppMsorafRoute: typeof AppMsorafRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -237,6 +257,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppMeetingsRoute: AppMeetingsRoute,
+  AppMsorafRoute: AppMsorafRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppProfileRoute: AppProfileRoute,
   AppReportsRoute: AppReportsRoute,

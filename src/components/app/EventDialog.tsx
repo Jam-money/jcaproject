@@ -21,6 +21,18 @@ import {
   attendeePillStyle,
 } from "@/lib/attendees";
 
+async function notifyDirectors(title: string, body: string, link = "/calendar") {
+  const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "director");
+  if (!roles?.length) return;
+  await supabase.from("notifications").insert(
+    roles.map(r => ({ user_id: r.user_id, title, body, link, read: false }))
+  );
+}
+
+async function notifyAdmins(title: string, body: string, link = "/calendar") {
+  await (supabase.rpc as any)("notify_role", { p_role: "admin", p_title: title, p_body: body, p_link: link });
+}
+
 // ── Attendee multi-select (inline toggle — no floating dropdown) ─────────────
 function AttendeeSelect({
   value, onChange, disabled,
@@ -246,6 +258,12 @@ export function EventDialog({
     setBusy(false);
     if (res.error) return toast.error(res.error.message);
     await logAudit("event", res.data.id, event ? "updated" : "created", { title });
+    const evDate = format(new Date(start), "MMM d, yyyy 'at' h:mm a");
+    if (event) {
+      await notifyDirectors(`Event updated: ${title}`, `Rescheduled or updated — ${evDate}${location ? ` · ${location}` : ""}`);
+    } else {
+      await notifyDirectors(`New event: ${title}`, `Scheduled for ${evDate}${location ? ` · ${location}` : ""}`);
+    }
     toast.success(event ? "Event updated" : "Event created");
     onOpenChange(false);
   };
@@ -257,6 +275,7 @@ export function EventDialog({
     setBusy(false);
     if (error) return toast.error(error.message);
     await logAudit("event", event.id, "deleted", { title: event.title });
+    await notifyDirectors(`Event cancelled: ${event.title}`, `This event has been removed from the calendar.`);
     toast.success("Event deleted"); onOpenChange(false);
   };
 
@@ -286,6 +305,11 @@ export function EventDialog({
       return toast.error(error.message);
     }
 
+    const label = status === "yes" ? "Going ✅" : status === "no" ? "Not going ❌" : "Maybe 🤔";
+    await notifyAdmins(
+      `RD responded: ${label}`,
+      `For event "${event.title}" — RD marked as ${label.replace(/[✅❌🤔]/g, "").trim()}.`,
+    );
     toast.success(
       status === "yes"   ? "✅ Marked as Going!" :
       status === "no"    ? "❌ Marked as Not going" :
@@ -303,6 +327,10 @@ export function EventDialog({
     }).eq("id", event.id);
     setRsvpBusy(false);
     if (error) return toast.error(error.message);
+    await notifyAdmins(
+      `RD proposed a new time`,
+      `For event "${event.title}" — please review the proposed schedule.`,
+    );
     toast.success("Proposed time sent to admin");
     setShowProposeTime(false);
   };
@@ -315,6 +343,10 @@ export function EventDialog({
     setRsvpBusy(false);
     if (error) return toast.error(error.message);
     setRsvpNotes(updatedNotes);
+    await notifyAdmins(
+      `RD added a note`,
+      `For event "${event.title}": "${directorNote}"`,
+    );
     toast.success("Note saved"); setShowAddNote(false);
   };
 

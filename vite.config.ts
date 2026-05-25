@@ -5,6 +5,7 @@ export default defineConfig({
     server: { entry: "server", preset: "node" },
   },
   vite: {
+    publicDir: "assets",
     build: {
       outDir: "dist/client",
     },

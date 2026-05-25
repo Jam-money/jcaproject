@@ -1,15 +1,16 @@
 import { Link, useLocation, Outlet, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, Calendar, Users2, Bell, FileBarChart2,
-  UserCircle2, LogOut, Sun, Moon, Menu, X, CalendarCheck2, Search,
+  UserCircle2, LogOut, Sun, Moon, Menu, X, CalendarCheck2, Search, CheckCheck, ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { format, parseISO } from "date-fns";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -17,6 +18,7 @@ const NAV = [
   { to: "/meetings", label: "Meetings", icon: Users2 },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/reports", label: "Reports", icon: FileBarChart2 },
+  { to: "/msoraf", label: "MSORAF", icon: ClipboardList },
   { to: "/profile", label: "Profile", icon: UserCircle2 },
 ] as const;
 
@@ -27,19 +29,47 @@ export function Shell() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifItems, setNotifItems] = useState<any[]>([]);
+  const bellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setOpen(false); }, [loc.pathname]);
 
   useEffect(() => {
     if (!profile) return;
     const load = async () => {
-      const { count } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("read", false).eq("user_id", profile.id);
+      const [{ count }, { data }] = await Promise.all([
+        supabase.from("notifications").select("*", { count: "exact", head: true }).eq("read", false).eq("user_id", profile.id),
+        supabase.from("notifications").select("*").eq("user_id", profile.id).order("created_at", { ascending: false }).limit(8),
+      ]);
       setUnread(count ?? 0);
+      setNotifItems(data ?? []);
     };
     void load();
     const ch = supabase.channel("notif-count").on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, load).subscribe();
     return () => { void supabase.removeChannel(ch); };
   }, [profile]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const markOneRead = async (id: string) => {
+    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    setNotifItems(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setUnread(prev => Math.max(0, prev - 1));
+  };
+
+  const markAllRead = async () => {
+    if (!profile) return;
+    await supabase.from("notifications").update({ read: true }).eq("user_id", profile.id).eq("read", false);
+    setNotifItems(prev => prev.map(n => ({ ...n, read: true })));
+    setUnread(0);
+  };
 
   const initials = (profile?.full_name || profile?.email || "?").split(" ").map(s=>s[0]).slice(0,2).join("").toUpperCase();
 
@@ -95,10 +125,58 @@ export function Shell() {
           <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
             {theme === "dark" ? <Sun className="h-4 w-4"/> : <Moon className="h-4 w-4"/>}
           </Button>
-          <Link to="/notifications" className="relative p-2 rounded-md hover:bg-muted">
-            <Bell className="h-5 w-5"/>
-            {unread > 0 && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive"/>}
-          </Link>
+          <div ref={bellRef} className="relative">
+            <button
+              onClick={() => setNotifOpen(v => !v)}
+              className="relative p-2 rounded-md hover:bg-muted"
+              aria-label="Notifications">
+              <Bell className={`h-5 w-5 transition-transform ${unread > 0 ? "animate-ring" : ""}`}/>
+              {unread > 0 && (
+                <span className="absolute top-1 right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"/>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"/>
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-border bg-background shadow-lg z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                  <span className="font-semibold text-sm">Notifications</span>
+                  {unread > 0 && (
+                    <button onClick={markAllRead} className="flex items-center gap-1 text-xs text-primary hover:underline">
+                      <CheckCheck className="h-3 w-3"/>Mark all read
+                    </button>
+                  )}
+                </div>
+                <ul className="max-h-96 overflow-y-auto divide-y divide-border">
+                  {notifItems.length === 0 && (
+                    <li className="px-4 py-8 text-center text-sm text-muted-foreground">No notifications yet.</li>
+                  )}
+                  {notifItems.map(n => (
+                    <li key={n.id}
+                      onClick={() => { if (!n.read) markOneRead(n.id); if (n.link) { setNotifOpen(false); navigate({ to: n.link }); } }}
+                      className={[
+                        "px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors",
+                        !n.read ? "bg-primary/5" : "",
+                      ].join(" ")}>
+                      <div className="flex items-start gap-2">
+                        <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${n.read ? "bg-muted-foreground/30" : "bg-primary"}`}/>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-sm truncate ${!n.read ? "font-semibold" : "text-muted-foreground"}`}>{n.title}</div>
+                          {n.body && <div className="text-xs text-muted-foreground truncate mt-0.5">{n.body}</div>}
+                          <div className="text-[10px] text-muted-foreground/70 mt-1">{format(parseISO(n.created_at), "MMM d, p")}</div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <div className="px-4 py-2 border-t border-border">
+                  <Link to="/notifications" onClick={() => setNotifOpen(false)} className="text-xs text-primary hover:underline">View all notifications</Link>
+                </div>
+              </div>
+            )}
+          </div>
         </header>
         <main className="p-4 sm:p-6 lg:p-8 animate-fade-in-up"><Outlet /></main>
       </div>
