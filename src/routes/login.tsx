@@ -20,7 +20,7 @@ function LoginPage() {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between gradient-primary text-primary-foreground p-12">
         <div className="flex items-center gap-2 text-lg font-semibold">
-          <CalendarCheck2 className="h-6 w-6" /> ORD
+          <CalendarCheck2 className="h-6 w-6" /> PSA GovTrack
         </div>
         <div>
           <h1 className="text-4xl font-bold leading-tight">Schedules, meetings and tasks in one platform.</h1>
@@ -34,7 +34,7 @@ function LoginPage() {
         <Card className="w-full max-w-md p-8 shadow-elevated animate-fade-in-up">
           <div className="flex items-center gap-2 mb-6 lg:hidden">
             <CalendarCheck2 className="h-6 w-6 text-primary" />
-            <span className="font-semibold">ORD</span>
+            <span className="font-semibold">PSA GovTrack</span>
           </div>
           <h2 className="text-2xl font-semibold">Welcome</h2>
           <p className="text-sm text-muted-foreground mb-6">Sign in to access your dashboard.</p>
