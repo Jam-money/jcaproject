@@ -13,13 +13,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 
 const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/calendar", label: "Calendar", icon: Calendar },
-  { to: "/meetings", label: "Meetings", icon: Users2 },
-  { to: "/notifications", label: "Notifications", icon: Bell },
-  { to: "/reports", label: "Reports", icon: FileBarChart2 },
-  { to: "/msoraf", label: "MSORAF", icon: ClipboardList },
-  { to: "/profile", label: "Profile", icon: UserCircle2 },
+  { to: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard, restricted: false },
+  { to: "/calendar",      label: "Calendar",       icon: Calendar,        restricted: false },
+  { to: "/meetings",      label: "Meetings",       icon: Users2,          restricted: false },
+  { to: "/notifications", label: "Notifications",  icon: Bell,            restricted: false },
+  { to: "/reports",       label: "Reports",        icon: FileBarChart2,   restricted: false },
+  { to: "/msoraf",        label: "MSORAF",         icon: ClipboardList,   restricted: true  },
+  { to: "/profile",       label: "Profile",        icon: UserCircle2,     restricted: false },
 ] as const;
 
 export function Shell() {
@@ -32,6 +32,10 @@ export function Shell() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifItems, setNotifItems] = useState<any[]>([]);
   const bellRef = useRef<HTMLDivElement>(null);
+
+  // Only admin and director can see MSORAF
+  const canAccessMsoraf = role === "admin" || role === "director";
+  const filteredNav = NAV.filter(item => !item.restricted || canAccessMsoraf);
 
   useEffect(() => { setOpen(false); }, [loc.pathname]);
 
@@ -71,7 +75,7 @@ export function Shell() {
     setUnread(0);
   };
 
-  const initials = (profile?.full_name || profile?.email || "?").split(" ").map(s=>s[0]).slice(0,2).join("").toUpperCase();
+  const initials = (profile?.full_name || profile?.email || "?").split(" ").map(s => s[0]).slice(0, 2).join("").toUpperCase();
 
   return (
     <div className="min-h-screen bg-background">
@@ -82,10 +86,11 @@ export function Shell() {
             <span className="grid place-items-center h-8 w-8 rounded-lg bg-primary text-primary-foreground"><CalendarCheck2 className="h-4 w-4"/></span>
             PSA GovTrack
           </Link>
-          <button className="lg:hidden" onClick={()=>setOpen(false)} aria-label="Close menu"><X className="h-5 w-5"/></button>
+          <button className="lg:hidden" onClick={() => setOpen(false)} aria-label="Close menu"><X className="h-5 w-5"/></button>
         </div>
+
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {NAV.map(({ to, label, icon: Icon }) => {
+          {filteredNav.map(({ to, label, icon: Icon }) => {
             const active = loc.pathname.startsWith(to);
             return (
               <Link key={to} to={to}
@@ -99,24 +104,27 @@ export function Shell() {
             );
           })}
         </nav>
+
         <div className="p-3 border-t border-sidebar-border">
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
             <Avatar className="h-9 w-9"><AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground">{initials}</AvatarFallback></Avatar>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate">{profile?.full_name ?? "User"}</div>
-              <div className="text-xs text-sidebar-foreground/70 capitalize">{role ?? "—"}</div>
+              <div className="text-xs text-sidebar-foreground/70 truncate">
+                {(profile as any)?.position ?? role ?? "—"}
+              </div>
             </div>
-            <button onClick={async ()=>{ await signOut(); navigate({ to: "/login" }); }} className="p-2 hover:bg-sidebar-accent rounded-md" aria-label="Sign out"><LogOut className="h-4 w-4"/></button>
+            <button onClick={async () => { await signOut(); navigate({ to: "/login" }); }} className="p-2 hover:bg-sidebar-accent rounded-md" aria-label="Sign out"><LogOut className="h-4 w-4"/></button>
           </div>
         </div>
       </aside>
 
-      {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={()=>setOpen(false)} />}
+      {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setOpen(false)} />}
 
       {/* Main */}
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 h-16 flex items-center gap-3 px-4 sm:px-6 bg-background/80 backdrop-blur border-b border-border">
-          <button className="lg:hidden p-2 -ml-2" onClick={()=>setOpen(true)} aria-label="Open menu"><Menu className="h-5 w-5"/></button>
+          <button className="lg:hidden p-2 -ml-2" onClick={() => setOpen(true)} aria-label="Open menu"><Menu className="h-5 w-5"/></button>
           <div className="flex-1 max-w-md relative hidden sm:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
             <input placeholder="Search events…" className="w-full h-10 pl-9 pr-3 rounded-lg bg-muted border border-transparent focus:border-ring focus:outline-none text-sm" />

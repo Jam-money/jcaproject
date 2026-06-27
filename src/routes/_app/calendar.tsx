@@ -17,6 +17,7 @@ import type { EventRow } from "@/lib/db";
 import {
   ATTENDEES, AttendeeValue, RSVPMap,
   attendeePillStyle, activeAttendees,
+  colorForValue, labelForValue,
 } from "@/lib/attendees";
 
 export const Route = createFileRoute("/_app/calendar")({ component: CalendarPage });
@@ -34,10 +35,10 @@ function isMultiDay(ev: EventRow) {
 function eventTouchesDay(ev: EventRow, d: Date) {
   return dayStart(d) >= dayStart(ev.start_time) && dayStart(d) <= dayStart(ev.end_time);
 }
-function getAttendees(ev: EventRow): AttendeeValue[] {
+function getAttendees(ev: EventRow): string[] {
   const raw = (ev as any).attendees;
   if (!raw) return [];
-  if (Array.isArray(raw)) return raw as AttendeeValue[];
+  if (Array.isArray(raw)) return raw as string[];
   try { return JSON.parse(raw); } catch { return []; }
 }
 function getRsvpMap(ev: EventRow): RSVPMap {
@@ -421,7 +422,7 @@ export function CalendarPage() {
                             {attendees.length > 0 && (
                               <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                                 {attendees.map(key => {
-                                  const a      = ATTENDEES.find(x => x.value === key)!;
+                                  const a      = colorForValue(key);
                                   // Only apply RSVP styling to RD; others always show as active
                                   const r      = key === "RD" ? rsvpMap["RD"] : undefined;
                                   const isNo   = r === "no";
@@ -431,9 +432,9 @@ export function CalendarPage() {
                                         ? { background: "#f1f5f9", color: "#94a3b8", borderColor: "#e2e8f0", textDecoration: "line-through" }
                                         : { background: a.bg, color: a.text, borderColor: a.border }}
                                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
-                                      title={key === "RD" && r ? `RD: ${r}` : key}>
+                                      title={key === "RD" && r ? `RD: ${r}` : labelForValue(key)}>
                                       <span style={{ background: isNo ? "#94a3b8" : a.dot }} className="w-1.5 h-1.5 rounded-full" />
-                                      {key}
+                                      {labelForValue(key)}
                                       {r === "yes"   && <span className="text-green-500 ml-0.5">✓</span>}
                                       {r === "no"    && <span className="text-red-400   ml-0.5">✗</span>}
                                       {r === "maybe" && <span className="text-yellow-500 ml-0.5">?</span>}

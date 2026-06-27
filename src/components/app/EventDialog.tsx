@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import {
   ATTENDEES, AttendeeValue, RSVPStatus, RSVPMap,
-  attendeePillStyle,
+  attendeePillStyle, colorForValue, labelForValue,
+  staffByDept, staffTag,
 } from "@/lib/attendees";
 
 async function notifyDirectors(title: string, body: string, link = "/calendar") {
@@ -33,45 +34,123 @@ async function notifyAdmins(title: string, body: string, link = "/calendar") {
   await (supabase.rpc as any)("notify_role", { p_role: "admin", p_title: title, p_body: body, p_link: link });
 }
 
-// ── Attendee multi-select (inline toggle — no floating dropdown) ─────────────
+// ── Attendee multi-select (dept pills + expandable staff dropdown) ──────────
 function AttendeeSelect({
   value, onChange, disabled,
 }: {
-  value: AttendeeValue[];
-  onChange: (v: AttendeeValue[]) => void;
+  value: string[];
+  onChange: (v: string[]) => void;
   disabled?: boolean;
 }) {
-  const toggle = (v: AttendeeValue) =>
+  const [openDept, setOpenDept] = useState<"SOCD" | "CRASD" | null>(null);
+
+  const toggle = (v: string) =>
     onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v]);
 
+  const staffChips = value.filter(v => v.startsWith("staff:"));
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {ATTENDEES.map(a => {
-        const selected = value.includes(a.value);
-        return (
-          <button
-            key={a.value}
-            type="button"
-            disabled={disabled}
-            onClick={() => toggle(a.value)}
-            style={selected ? { background: a.bg, color: a.text, borderColor: a.border } : undefined}
-            className={[
-              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all select-none",
-              selected
-                ? "ring-2 ring-offset-1 ring-current/30"
-                : "bg-muted/40 text-muted-foreground border-border hover:bg-muted/70",
-              disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
-            ].join(" ")}
-          >
-            <span
-              style={{ background: selected ? a.dot : undefined }}
-              className={`w-2 h-2 rounded-full shrink-0 ${selected ? "" : "bg-muted-foreground/40"}`}
-            />
-            {a.label}
-            {selected && <span className="ml-0.5 opacity-70">✓</span>}
-          </button>
-        );
-      })}
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {ATTENDEES.map(a => {
+          const selected = value.includes(a.value);
+          const isGroup  = a.value === "SOCD" || a.value === "CRASD";
+          const deptCount = isGroup
+            ? value.filter(v => v.startsWith("staff:") && colorForValue(v).value === a.value).length
+            : 0;
+
+          return (
+            <button
+              key={a.value}
+              type="button"
+              disabled={disabled}
+              onClick={() => toggle(a.value)}
+              style={selected ? { background: a.bg, color: a.text, borderColor: a.border } : undefined}
+              className={[
+                "inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full text-xs font-semibold border transition-all select-none",
+                selected
+                  ? "ring-2 ring-offset-1 ring-current/30"
+                  : "bg-muted/40 text-muted-foreground border-border hover:bg-muted/70",
+                disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+              ].join(" ")}
+            >
+              <span
+                style={{ background: selected ? a.dot : undefined }}
+                className={`w-2 h-2 rounded-full shrink-0 ${selected ? "" : "bg-muted-foreground/40"}`}
+              />
+              {a.label}
+              {selected && <span className="ml-0.5 opacity-70">✓</span>}
+              {!selected && deptCount > 0 && (
+                <span className="ml-1 text-[10px] bg-black/10 rounded-full px-1.5">{deptCount}</span>
+              )}
+              {isGroup && (
+                <span
+                  onClick={e => {
+                    e.stopPropagation();
+                    setOpenDept(openDept === a.value ? null : (a.value as "SOCD" | "CRASD"));
+                  }}
+                  className="ml-0.5 -mr-1 p-0.5 rounded-full hover:bg-black/10"
+                >
+                  {openDept === a.value ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Staff dropdown for SOCD / CRASD */}
+      {openDept && (
+        <div className="rounded-lg border border-border p-2.5 bg-muted/20 space-y-1.5">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            {openDept} staff
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {staffByDept(openDept).map(member => {
+              const sel  = value.includes(member.id);
+              const dept = colorForValue(member.id);
+              return (
+                <button
+                  key={member.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => toggle(member.id)}
+                  style={sel ? { background: dept.bg, color: dept.text, borderColor: dept.border } : undefined}
+                  className={[
+                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all select-none",
+                    sel ? "" : "bg-background text-muted-foreground border-border hover:bg-muted/60",
+                    disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                  ].join(" ")}
+                  title={`${member.fullName} — ${member.position}`}
+                >
+                  {staffTag(member)}{sel && " ✓"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Selected staff chips (visible even when dropdown is closed) */}
+      {staffChips.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {staffChips.map(id => {
+            const dept = colorForValue(id);
+            return (
+              <span key={id}
+                style={{ background: dept.bg, color: dept.text, borderColor: dept.border }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border">
+                {labelForValue(id)}
+                {!disabled && (
+                  <button type="button" onClick={() => toggle(id)} className="ml-0.5 opacity-60 hover:opacity-100">
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                )}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -100,8 +179,9 @@ function RSVPBtn({
 }
 
 // ── Admin RSVP summary row ────────────────────────────────────────────────────
-function RSVPSummaryRow({ attendee, status, note }: {
-  attendee: typeof ATTENDEES[number];
+function RSVPSummaryRow({ label, colors, status, note }: {
+  label: string;
+  colors: { bg: string; text: string; border: string; dot: string; value: string };
   status: RSVPStatus;
   note?: string;
 }) {
@@ -114,14 +194,14 @@ function RSVPSummaryRow({ attendee, status, note }: {
 
   return (
     <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/30 transition-colors">
-      <span style={{ background: attendee.bg, color: attendee.text, borderColor: attendee.border }}
+      <span style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
         className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border shrink-0 min-w-[56px] justify-center">
-        <span style={{ background: attendee.dot }} className="w-2 h-2 rounded-full" />
-        {attendee.label}
+        <span style={{ background: colors.dot }} className="w-2 h-2 rounded-full" />
+        {label}
       </span>
 
-      {/* Only RD has a real RSVP status; others always attend */}
-      {attendee.value === "RD" ? (
+      {/* Only RD has a real RSVP status; everyone else always attends */}
+      {colors.value === "RD" ? (
         s ? (
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${s.cls}`}>
             {s.icon}{s.label}
@@ -135,7 +215,7 @@ function RSVPSummaryRow({ attendee, status, note }: {
         </span>
       )}
 
-      {note && attendee.value === "RD" && (
+      {note && colors.value === "RD" && (
         <span className="text-xs text-muted-foreground truncate ml-auto max-w-[160px]" title={note}>
           💬 {note}
         </span>
@@ -145,7 +225,7 @@ function RSVPSummaryRow({ attendee, status, note }: {
 }
 
 // ── Calendar bar preview ──────────────────────────────────────────────────────
-function CalendarBarPreview({ attendees, rsvpMap }: { attendees: AttendeeValue[]; rsvpMap: RSVPMap }) {
+function CalendarBarPreview({ attendees, rsvpMap }: { attendees: string[]; rsvpMap: RSVPMap }) {
   const style = attendeePillStyle(attendees, rsvpMap);
   const rdDeclined   = attendees.includes("RD") && rsvpMap["RD"] === "no";
   const activeCount  = attendees.length - (rdDeclined ? 1 : 0);
@@ -181,12 +261,12 @@ export function EventDialog({
   const [end, setEnd]                 = useState("");
   const [notes, setNotes]             = useState("");
   const [meetingLink, setMeetingLink] = useState("");
-  const [attendees, setAttendees]     = useState<AttendeeValue[]>([]);
+  const [attendees, setAttendees]     = useState<string[]>([]);
   const [busy, setBusy]               = useState(false);
 
   // RSVP — only RD writes to this
   const [rsvpMap, setRsvpMap]     = useState<RSVPMap>({});
-  const [rsvpNotes, setRsvpNotes] = useState<Partial<Record<AttendeeValue, string>>>({});
+  const [rsvpNotes, setRsvpNotes] = useState<Partial<Record<string, string>>>({});
 
   // RD UI state
   const [myRsvp, setMyRsvp]                  = useState<RSVPStatus>(null);
@@ -220,7 +300,7 @@ export function EventDialog({
       setRsvpMap(map);
 
       const rawNotes = (event as any).rsvp_notes;
-      const nts: Partial<Record<AttendeeValue, string>> =
+      const nts: Partial<Record<string, string>> =
         rawNotes && typeof rawNotes === "object" ? rawNotes : {};
       setRsvpNotes(nts);
 
@@ -380,21 +460,31 @@ export function EventDialog({
               <Label>Type</Label>
               <Select value={type} onValueChange={v => setType(v as EventType)} disabled={!canEdit}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="meeting">Meeting</SelectItem>
-                  <SelectItem value="event">Event</SelectItem>
-                  <SelectItem value="schedule">Schedule</SelectItem>
-                  <SelectItem value="staff_meeting">Staff Meeting</SelectItem>
-                  <SelectItem value="training">Training</SelectItem>
-                  <SelectItem value="field_supervision">Field Supervision</SelectItem>
-                  <SelectItem value="data_dissemination">Data Dissemination</SelectItem>
-                  <SelectItem value="press_conference">Press Conference</SelectItem>
-                  <SelectItem value="official_business">Official Business</SelectItem>
-                  <SelectItem value="interagency_meeting">Interagency Meeting</SelectItem>
-                  <SelectItem value="courtesy_visit">Courtesy Visit</SelectItem>
-                  <SelectItem value="lcro_audit">LCRO Audit</SelectItem>
-                  <SelectItem value="on_leave">On Leave</SelectItem>
-                </SelectContent>
+              <SelectContent>
+  <SelectItem value="meeting">Meeting</SelectItem>
+  <SelectItem value="event">Event</SelectItem>
+  <SelectItem value="training_conduct">Training (Conduct)</SelectItem>
+  <SelectItem value="personal">Personal</SelectItem>
+  <SelectItem value="attendance_to_meeting">Attendance to Meeting/Activities</SelectItem>
+  <SelectItem value="competency_based_interview">Competency Based Interview</SelectItem>
+  <SelectItem value="investigation">Investigation</SelectItem>
+  <SelectItem value="senior_staff_meeting">Senior Staff Meeting</SelectItem>
+  <SelectItem value="data_processing">Data Processing</SelectItem>
+  <SelectItem value="directorate_meeting">Directorate Meeting</SelectItem>
+  <SelectItem value="kasalan_ng_bayan">Kasalan ng Bayan</SelectItem>
+  <SelectItem value="mobile_serbisyo_caravan">Mobile Serbisyo Caravan</SelectItem>
+  <SelectItem value="one_stop_shop">One Stop Shop</SelectItem>
+  <SelectItem value="robac_meeting">ROBAC Meeting</SelectItem>
+  <SelectItem value="national_data_review">National Data Review</SelectItem>
+  <SelectItem value="regional_data_review">Regional Data Review</SelectItem>
+  <SelectItem value="field_supervision">Field Supervision</SelectItem>
+  <SelectItem value="press_conference">Press Conference</SelectItem>
+  <SelectItem value="official_business">Official Business</SelectItem>
+  <SelectItem value="interagency_meeting">Interagency Meeting</SelectItem>
+  <SelectItem value="courtesy_visit">Courtesy Visit</SelectItem>
+  <SelectItem value="lcro_audit">LCRO Audit</SelectItem>
+  <SelectItem value="on_leave">On Leave</SelectItem>
+</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
@@ -530,13 +620,13 @@ export function EventDialog({
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Attendees</p>
                 <div className="flex flex-wrap gap-1.5">
                   {attendees.map(key => {
-                    const a = ATTENDEES.find(x => x.value === key)!;
+                    const a = colorForValue(key);
                     return (
                       <span key={key}
                         style={{ background: a.bg, color: a.text, borderColor: a.border }}
                         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border">
                         <span style={{ background: a.dot }} className="w-2 h-2 rounded-full" />
-                        {a.label}
+                        {labelForValue(key)}
                       </span>
                     );
                   })}
@@ -602,17 +692,15 @@ export function EventDialog({
 
             {!adminRsvpCollapsed && (
               <div className="divide-y divide-border">
-                {attendees.map(key => {
-                  const a = ATTENDEES.find(x => x.value === key)!;
-                  return (
-                    <RSVPSummaryRow
-                      key={key}
-                      attendee={a}
-                      status={key === "RD" ? (rsvpMap["RD"] ?? null) : null}
-                      note={key === "RD" ? rsvpNotes["RD"] : undefined}
-                    />
-                  );
-                })}
+                {attendees.map(key => (
+                  <RSVPSummaryRow
+                    key={key}
+                    label={labelForValue(key)}
+                    colors={colorForValue(key)}
+                    status={key === "RD" ? (rsvpMap["RD"] ?? null) : null}
+                    note={key === "RD" ? rsvpNotes["RD"] : undefined}
+                  />
+                ))}
                 <div className="p-3">
                   <CalendarBarPreview attendees={attendees} rsvpMap={rsvpMap} />
                 </div>
