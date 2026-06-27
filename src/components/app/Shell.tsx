@@ -7,7 +7,7 @@ import {
   UserCircle2, LogOut, Sun, Moon, Menu, X, CalendarCheck2, Search, CheckCheck, ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
@@ -106,15 +106,27 @@ export function Shell() {
         </nav>
 
         <div className="p-3 border-t border-sidebar-border">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-lg">
-            <Avatar className="h-9 w-9"><AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground">{initials}</AvatarFallback></Avatar>
+          <div className="flex items-center gap-2 px-2 py-2 rounded-lg">
+            <Avatar className="h-8 w-8 shrink-0">
+              <AvatarImage src={(profile as any)?.avatar_url ?? undefined} alt={profile?.full_name ?? "User"} />
+              <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs">{initials}</AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{profile?.full_name ?? "User"}</div>
-              <div className="text-xs text-sidebar-foreground/70 truncate">
+              <div className="text-xs font-medium leading-tight truncate" title={profile?.full_name ?? "User"}>{profile?.full_name ?? "User"}</div>
+              <div
+                className="text-[11px] text-sidebar-foreground/70 leading-snug break-words line-clamp-2"
+                title={(profile as any)?.position ?? role ?? "—"}
+              >
                 {(profile as any)?.position ?? role ?? "—"}
               </div>
             </div>
-            <button onClick={async () => { await signOut(); navigate({ to: "/login" }); }} className="p-2 hover:bg-sidebar-accent rounded-md" aria-label="Sign out"><LogOut className="h-4 w-4"/></button>
+            <button
+              onClick={async () => { await signOut(); navigate({ to: "/login" }); }}
+              className="p-2 hover:bg-sidebar-accent rounded-md shrink-0"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-4 w-4"/>
+            </button>
           </div>
         </div>
       </aside>

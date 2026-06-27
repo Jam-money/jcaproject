@@ -127,7 +127,7 @@ function AttendeeLegend() {
 
 export function CalendarPage() {
   const { role } = useAuth();
-  const canEdit = role === "admin";
+  const canEdit = role === "admin" || role === "director";
   const [view, setView]               = useState<View>("month");
   const [cursor, setCursor]           = useState(new Date());
   const [events, setEvents]           = useState<EventRow[]>([]);
