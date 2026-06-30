@@ -1,7 +1,7 @@
 {
-  "name": "RD Flow Manager",
-  "short_name": "RD Flow",
-  "description": "RD Flow Manager — manage tasks, meetings, and calendars",
+  "name": "PSA GovTrack",
+  "short_name": "GovTrack",
+  "description": "PSA GovTrack — manage tasks, meetings, and calendars",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
