@@ -5,6 +5,7 @@ export const ATTENDEES = [
   { value: "JBT",   label: "JBT",   dot: "#eab308", bg: "#fefce8", text: "#854d0e", border: "#fde047", hex: "#eab308" },
   { value: "SOCD",  label: "SOCD",  dot: "#22c55e", bg: "#f0fdf4", text: "#15803d", border: "#86efac", hex: "#22c55e" },
   { value: "CRASD", label: "CRASD", dot: "#3b82f6", bg: "#eff6ff", text: "#1d4ed8", border: "#93c5fd", hex: "#3b82f6" },
+  { value: "SBB",   label: "SBB",   dot: "#f97316", bg: "#fff7ed", text: "#c2410c", border: "#fdba74", hex: "#f97316" },
 ] as const;
 
 export type AttendeeValue = string; // dept codes ("RD","JBT","SOCD","CRASD") OR staff ids ("staff:luperte")
@@ -44,10 +45,12 @@ export const STAFF: StaffMember[] = [
   s("hinaut",     "jimmy.hinaut@psa.gov.ph",           "Hinaut, Jimmy V.",            "Administrative Assistant II",  "AA II",    "CRASD"),
   s("lomopog",    "lovely.lomopog@psa.gov.ph",         "Lomopog, Lovely H.",          "Administrative Aide VI",       "AA VI",    "CRASD"),
   s("agnes",      "jayveecedric.agnes@psa.gov.ph",     "Agnes, Jayvee Cedric A.",     "Administrative Aide VI",       "AA VI",    "CRASD"),
+  s("obra",       "h.obra@psa.gov.ph",                 "Obra, Harvey C.",             "Registration Officer III",     "RO III",   "CRASD"),
+  s("fabroa",     "m.fabroa@psa.gov.ph",               "Fabroa, Magdalino Jr.",       "Administrative Aide III",      "AA III",   "CRASD"),
 
   // ── SOCD (head: RD — Balagbis, Sarah B.) ──
   s("castro",       "brendalynn.castro@psa.gov.ph",      "Castro, Brenda Lynn M.",     "Supervising Statistical Specialist", "SSS",   "SOCD"),
-  s("capadera",      "donagay.capadera@psa.gov.ph",       "Capadera, Donagay G.",       "Senior Statistical Specialist",      "Sr. SS", "SOCD"),
+  s("capadera",      "donagay.capareda@psa.gov.ph",       "Capareda, Donagay G.",       "Senior Statistical Specialist",      "Sr. SS", "SOCD"),
   s("gallopin",       "cristine.gallopin@psa.gov.ph",      "Gallopin, Cristine T.",      "Senior Statistical Specialist",      "Sr. SS", "SOCD"),
   s("lagarbe",         "aldemar.lagarbe@psa.gov.ph",        "Lagarbe, Aldemar A.",        "Statistical Specialist II",          "SS II",  "SOCD"),
   s("laspobres",       "genelyn.laspobres@psa.gov.ph",      "Laspobres, Genelyn B.",      "Statistical Specialist II",          "SS II",  "SOCD"),

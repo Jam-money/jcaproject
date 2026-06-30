@@ -1,0 +1,24 @@
+{
+  "name": "RD Flow Manager",
+  "short_name": "RD Flow",
+  "description": "RD Flow Manager — manage tasks, meetings, and calendars",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/govtrack.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/govtrack.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

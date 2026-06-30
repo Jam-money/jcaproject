@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
+import { InstallButton } from "@/components/ui/InstallPrompt";
 
 const NAV = [
   { to: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard, restricted: false },
@@ -142,6 +143,7 @@ export function Shell() {
             <input placeholder="Search events…" className="w-full h-10 pl-9 pr-3 rounded-lg bg-muted border border-transparent focus:border-ring focus:outline-none text-sm" />
           </div>
           <div className="flex-1 sm:hidden" />
+          <InstallButton className="hidden sm:inline-flex" />
           <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
             {theme === "dark" ? <Sun className="h-4 w-4"/> : <Moon className="h-4 w-4"/>}
           </Button>
