@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import type { EventRow, EventType } from "@/lib/db";
 import { logAudit, EVENT_TYPE_LABELS, EVENT_TYPE_BADGE } from "@/lib/db";
@@ -32,6 +33,53 @@ async function notifyDirectors(title: string, body: string, link = "/calendar") 
 
 async function notifyAdmins(title: string, body: string, link = "/calendar") {
   await (supabase.rpc as any)("notify_role", { p_role: "admin", p_title: title, p_body: body, p_link: link });
+}
+
+// Push an admin/director-created or edited event into msoraf_rows.
+// Upserts on (source_event_id, user_id) so edits update the existing row
+// instead of creating duplicates.
+async function syncToMsoraf(ev: {
+  id: string; title: string; description: string | null; notes: string | null;
+  location: string | null; start_time: string; end_time: string;
+}, userId: string) {
+  const payload = {
+    source_event_id: ev.id,
+    user_id:    userId,
+    date_label: format(parseISO(ev.start_time), "dd (EEE)"),
+    date_sort:  format(parseISO(ev.start_time), "yyyy-MM-dd"),
+    activity:   ev.title,
+    objective:  ev.description ?? "",
+    event_time: `${format(parseISO(ev.start_time), "h:mma")}-${format(parseISO(ev.end_time), "h:mma")}`,
+    departure:  "N/A",
+    arrival:    "N/A",
+    venue:      ev.location ?? "N/A",
+    remarks:    ev.notes ?? "",
+  };
+
+  // Check if row exists first, then update or insert
+  const { data: existing } = await (supabase.from("msoraf_rows" as any)
+    .select("id")
+    .eq("source_event_id", ev.id)
+    .eq("user_id", userId)
+    .maybeSingle());
+
+  let error;
+  if (existing) {
+    const res = await (supabase.from("msoraf_rows" as any)
+      .update(payload)
+      .eq("id", existing.id));
+    error = res.error;
+  } else {
+    const res = await (supabase.from("msoraf_rows" as any)
+      .insert(payload));
+    error = res.error;
+  }
+
+  if (error) {
+    // Don't block the calendar save flow on a MSORAF sync failure —
+    // just surface a quiet warning so admin knows to check it manually.
+    toast.warning("Event saved, but MSORAF sync failed: " + error.message);
+  }
 }
 
 // ── Attendee multi-select (dept pills + expandable staff dropdown) ──────────
@@ -253,6 +301,7 @@ export function EventDialog({
   open: boolean; onOpenChange: (o: boolean) => void;
   event: EventRow | null; defaultDate?: Date; canEdit: boolean;
 }) {
+  const { role } = useAuth();
   const [title, setTitle]             = useState("");
   const [description, setDescription] = useState("");
   const [type, setType]               = useState<EventType>("meeting");
@@ -278,6 +327,7 @@ export function EventDialog({
   const [directorNote, setDirectorNote]       = useState("");
   const [rsvpCollapsed, setRsvpCollapsed]     = useState(false);
   const [rsvpBusy, setRsvpBusy]               = useState(false);
+  const [creatorName, setCreatorName]         = useState<string | null>(null);
 
   const [adminRsvpCollapsed, setAdminRsvpCollapsed] = useState(false);
 
@@ -307,6 +357,16 @@ export function EventDialog({
       // RD's status specifically
       setMyRsvp(map["RD"] ?? null);
       setDirectorNote(nts["RD"] ?? "");
+
+      // Fetch creator name
+      const createdBy = (event as any).created_by;
+      if (createdBy) {
+        supabase.from("profiles").select("full_name").eq("id", createdBy).maybeSingle().then(({ data }) => {
+          setCreatorName(data?.full_name ?? null);
+        });
+      } else {
+        setCreatorName(null);
+      }
     } else {
       const d = defaultDate ?? new Date();
       const s = new Date(d); s.setHours(9, 0, 0, 0);
@@ -317,6 +377,7 @@ export function EventDialog({
       setEnd(format(e, "yyyy-MM-dd'T'HH:mm"));
       setRsvpMap({}); setRsvpNotes({});
       setMyRsvp(null); setDirectorNote("");
+      setCreatorName(null);
     }
     setShowProposeTime(false); setShowAddNote(false);
     setProposeStart(""); setProposeEnd(""); setProposeNote("");
@@ -337,6 +398,13 @@ export function EventDialog({
     else        res = await supabase.from("events").insert({ ...payload, created_by: user!.id }).select().single();
     setBusy(false);
     if (res.error) return toast.error(res.error.message);
+
+    // Auto-sync into MSORAF — only when the saver is admin or director.
+    // Staff-created/edited events are never written to msoraf_rows.
+    if ((role === "admin" || role === "director") && user) {
+      await syncToMsoraf(res.data, user.id);
+    }
+
     await logAudit("event", res.data.id, event ? "updated" : "created", { title });
     const evDate = format(new Date(start), "MMM d, yyyy 'at' h:mm a");
     if (event) {
@@ -575,6 +643,9 @@ export function EventDialog({
                 {EVENT_TYPE_LABELS[event.event_type] ?? event.event_type}
               </span>
               <h2 className="text-xl font-bold text-foreground leading-tight">{event.title}</h2>
+              {creatorName && (
+                <p className="text-xs text-muted-foreground">Created by {creatorName}</p>
+              )}
             </div>
 
             {/* Date & time */}

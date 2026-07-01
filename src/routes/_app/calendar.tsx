@@ -24,8 +24,6 @@ export const Route = createFileRoute("/_app/calendar")({ component: CalendarPage
 
 type View = "month" | "week" | "day";
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
 function dayStart(d: Date | string) {
   return startOfDay(typeof d === "string" ? parseISO(d) : d);
 }
@@ -54,7 +52,16 @@ function getRsvpNotes(ev: EventRow): Partial<Record<string, string>> {
   try { return JSON.parse(raw); } catch { return {}; }
 }
 
-// ─── Lane layout ────────────────────────────────────────────────────────────
+// Strict unit filtering: a CRASD user sees only events tagged "CRASD" in
+// attendees, a SOCD user sees only events tagged "SOCD". Admins and directors see everything.
+// The event's creator can always see their own event, regardless of unit tags.
+function eventVisibleToUnit(ev: EventRow, isAdmin: boolean, isDirector: boolean, myUnit: string | null, myUserId: string | null) {
+  if (isAdmin || isDirector) return true;
+  if (myUserId && (ev as any).created_by === myUserId) return true;
+  if (myUnit === null) return false;
+  const attendees = getAttendees(ev);
+  return attendees.includes(myUnit);
+}
 
 interface PlacedEvent {
   ev: EventRow;
@@ -98,14 +105,10 @@ function layoutWeek(week: Date[], events: EventRow[]): PlacedEvent[] {
   return placed;
 }
 
-// ─── Constants ──────────────────────────────────────────────────────────────
-
 const LANE_H      = 24;
 const DATE_H      = 30;
 const PADDING     = 8;
 const MAX_VISIBLE = 3;
-
-// ─── Attendee legend ────────────────────────────────────────────────────────
 
 function AttendeeLegend() {
   return (
@@ -123,11 +126,14 @@ function AttendeeLegend() {
   );
 }
 
-// ─── Component ──────────────────────────────────────────────────────────────
-
 export function CalendarPage() {
-  const { role } = useAuth();
-  const canEdit = role === "admin" || role === "director";
+  const { role, profile, user } = useAuth();
+  const canEdit = role === "admin" || role === "director" || role === "staff";
+  const isAdmin = role === "admin";
+  const isDirector = role === "director";
+  const myUnit  = profile?.unit ?? null;
+  const myUserId = user?.id ?? null;
+
   const [view, setView]               = useState<View>("month");
   const [cursor, setCursor]           = useState(new Date());
   const [events, setEvents]           = useState<EventRow[]>([]);
@@ -138,14 +144,15 @@ export function CalendarPage() {
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from("events").select("*").order("start_time");
-      setEvents(data ?? []);
+      setEvents((data ?? []).filter(ev => eventVisibleToUnit(ev, isAdmin, isDirector, myUnit, myUserId)));
     };
     void load();
+
     const ch = supabase.channel("cal")
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, load)
       .subscribe();
     return () => { void supabase.removeChannel(ch); };
-  }, []);
+  }, [isAdmin, isDirector, myUnit, myUserId]);
 
   const days = useMemo(() => {
     if (view === "month") return eachDayOfInterval({ start: startOfWeek(startOfMonth(cursor)), end: endOfWeek(endOfMonth(cursor)) });
@@ -183,12 +190,12 @@ export function CalendarPage() {
 
   return (
     <div className="space-y-4 max-w-7xl">
-      {/* Header */}
       <div className="flex flex-wrap items-center gap-3 justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Calendar</h1>
           <p className="text-sm text-muted-foreground">
             {format(cursor, view === "day" ? "EEEE, MMM d, yyyy" : "MMMM yyyy")}
+            {!isAdmin && myUnit && <span className="ml-2 text-xs font-medium uppercase tracking-wide text-primary">· {myUnit}</span>}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -208,12 +215,10 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {/* Attendee legend */}
       <AttendeeLegend />
 
       <Card className="shadow-soft overflow-hidden">
 
-        {/* ══ MONTH VIEW ══════════════════════════════════════════════════════ */}
         {view === "month" && (
           <>
             <div className="grid grid-cols-7 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
@@ -231,7 +236,6 @@ export function CalendarPage() {
               return (
                 <div key={rowIdx} className="relative grid grid-cols-7 border-t border-border" style={{ height: rowH }}>
 
-                  {/* Background cells */}
                   {week.map(d => {
                     const inMonth = isSameMonth(d, cursor);
                     const today   = isSameDay(d, startOfDay(new Date()));
@@ -256,7 +260,6 @@ export function CalendarPage() {
                     );
                   })}
 
-                  {/* Event pills */}
                   {placed.filter(p => p.lane < MAX_VISIBLE).map((p, i) => {
                     const colPct    = 100 / 7;
                     const GAP       = 2;
@@ -264,7 +267,6 @@ export function CalendarPage() {
                     const attendees = getAttendees(p.ev);
                     const rsvpMap   = getRsvpMap(p.ev);
                     const bgStyle   = attendeePillStyle(attendees, rsvpMap);
-                    // Only RD's "no" counts as a decline for badge display
                     const rdDeclined = attendees.includes("RD") && rsvpMap["RD"] === "no";
                     const allGone   = activeAttendees(attendees, rsvpMap).length === 0 && attendees.length > 0;
                     const rdNote    = getRsvpNotes(p.ev)["RD"];
@@ -306,21 +308,18 @@ export function CalendarPage() {
                           <span className="shrink-0 opacity-60 text-[10px]">↠</span>
                         )}
                         <span className="truncate flex-1">{p.ev.title}</span>
-                        {/* Show RD declined badge on pill */}
                         {rdDeclined && p.isEnd && (
                           <span title="RD declined"
                             className="shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[7px] font-bold bg-black/25 line-through">
                             R
                           </span>
                         )}
-                        {/* Show meeting link badge on pill */}
                         {hasLink && p.isEnd && (
                           <span title="Online meeting — click to join"
                             className="shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-blue-500/80">
                             <Video className="w-2 h-2 text-white" />
                           </span>
                         )}
-                        {/* Show RD note badge on pill */}
                         {rdNote && p.isEnd && (
                           <span title={rdNote}
                             className="shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-purple-500/80">
@@ -331,7 +330,6 @@ export function CalendarPage() {
                     );
                   })}
 
-                  {/* +N more */}
                   {week.map((d, colIdx) => {
                     const overflow = placed.filter(p => p.lane >= MAX_VISIBLE && colIdx >= p.startCol && colIdx <= p.endCol);
                     if (overflow.length === 0) return null;
@@ -351,7 +349,6 @@ export function CalendarPage() {
           </>
         )}
 
-        {/* ══ WEEK / DAY VIEW ════════════════════════════════════════════════ */}
         {view !== "month" && (
           <div className="divide-y divide-border">
             {days.map(d => {
@@ -385,7 +382,6 @@ export function CalendarPage() {
                           onClick={() => openEdit(ev)}
                           className="w-full text-left rounded-lg overflow-hidden border border-black/10 hover:brightness-95 transition-all"
                           style={{ opacity: allGone ? 0.5 : 1 }}>
-                          {/* Color bar — driven by active attendees (RD "no" removes his stripe) */}
                           <div className="h-1.5 w-full" style={bgStyle} />
                           <div className="px-3 py-2 bg-background">
                             <div className="font-medium text-sm flex items-center gap-1.5 text-foreground">
@@ -418,12 +414,10 @@ export function CalendarPage() {
                                 {format(parseISO(ev.start_time), "MMM d")} → {format(parseISO(ev.end_time), "MMM d")}
                               </div>
                             )}
-                            {/* Attendee RSVP chips — only RD has interactive RSVP; others show as always attending */}
                             {attendees.length > 0 && (
                               <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                                 {attendees.map(key => {
                                   const a      = colorForValue(key);
-                                  // Only apply RSVP styling to RD; others always show as active
                                   const r      = key === "RD" ? rsvpMap["RD"] : undefined;
                                   const isNo   = r === "no";
                                   return (
