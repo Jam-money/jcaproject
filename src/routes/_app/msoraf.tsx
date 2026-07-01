@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { Printer, Plus, ChevronLeft, ChevronRight } from "lucide-react";
@@ -74,6 +75,13 @@ function EditCell({
 }
 
 function MSORAF() {
+  const { role } = useAuth();
+
+  // Hard guard: only admin/director can access MSORAF, even via direct URL.
+  if (role !== "admin" && role !== "director") {
+    return <Navigate to="/calendar" />;
+  }
+
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [rows, setRows] = useState<MsorafRow[]>([]);
@@ -130,7 +138,8 @@ function MSORAF() {
         // We have saved rows -- use them
         setRows(savedRows.map(fromDb));
       } else {
-        // No saved rows yet -- seed from events table
+        // No saved rows yet -- seed from events table, but ONLY events created
+        // by an admin or director. Staff-created events are never recorded in MSORAF.
         const { data: events } = await supabase
           .from("events")
           .select("*")
@@ -138,7 +147,28 @@ function MSORAF() {
           .lte("start_time", end.toISOString())
           .order("start_time");
 
-        const mapped: MsorafRow[] = (events ?? []).map(ev => ({
+        let eligibleEvents = events ?? [];
+
+        if (eligibleEvents.length > 0) {
+          // Look up the role of every distinct event creator in one query
+          const creatorIds = Array.from(
+            new Set(eligibleEvents.map(ev => ev.created_by).filter(Boolean))
+          );
+          const { data: creatorRoles } = await supabase
+            .from("user_roles")
+            .select("user_id, role")
+            .in("user_id", creatorIds);
+
+          const roleByUser: Record<string, string> = {};
+          (creatorRoles ?? []).forEach(r => { roleByUser[r.user_id] = r.role; });
+
+          eligibleEvents = eligibleEvents.filter(ev => {
+            const creatorRole = roleByUser[ev.created_by];
+            return creatorRole === "admin" || creatorRole === "director";
+          });
+        }
+
+        const mapped: MsorafRow[] = eligibleEvents.map(ev => ({
           id:        `pending-${ev.id}`,   // temp id until inserted
           dateLabel: format(parseISO(ev.start_time), "dd (EEE)"),
           dateSort:  format(parseISO(ev.start_time), "yyyy-MM-dd"),

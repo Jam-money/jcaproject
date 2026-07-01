@@ -18,6 +18,7 @@ import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppMsorafRouteImport } from './routes/_app/msoraf'
 import { Route as AppMeetingsRouteImport } from './routes/_app/meetings'
+import { Route as AppManageUnitsRouteImport } from './routes/_app/manage-units'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
 
@@ -65,6 +66,11 @@ const AppMeetingsRoute = AppMeetingsRouteImport.update({
   path: '/meetings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppManageUnitsRoute = AppManageUnitsRouteImport.update({
+  id: '/manage-units',
+  path: '/manage-units',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/calendar': typeof AppCalendarRoute
   '/dashboard': typeof AppDashboardRoute
+  '/manage-units': typeof AppManageUnitsRoute
   '/meetings': typeof AppMeetingsRoute
   '/msoraf': typeof AppMsorafRoute
   '/notifications': typeof AppNotificationsRoute
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/calendar': typeof AppCalendarRoute
   '/dashboard': typeof AppDashboardRoute
+  '/manage-units': typeof AppManageUnitsRoute
   '/meetings': typeof AppMeetingsRoute
   '/msoraf': typeof AppMsorafRoute
   '/notifications': typeof AppNotificationsRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/manage-units': typeof AppManageUnitsRoute
   '/_app/meetings': typeof AppMeetingsRoute
   '/_app/msoraf': typeof AppMsorafRoute
   '/_app/notifications': typeof AppNotificationsRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/calendar'
     | '/dashboard'
+    | '/manage-units'
     | '/meetings'
     | '/msoraf'
     | '/notifications'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/calendar'
     | '/dashboard'
+    | '/manage-units'
     | '/meetings'
     | '/msoraf'
     | '/notifications'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/calendar'
     | '/_app/dashboard'
+    | '/_app/manage-units'
     | '/_app/meetings'
     | '/_app/msoraf'
     | '/_app/notifications'
@@ -225,6 +237,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMeetingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/manage-units': {
+      id: '/_app/manage-units'
+      path: '/manage-units'
+      fullPath: '/manage-units'
+      preLoaderRoute: typeof AppManageUnitsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
@@ -245,6 +264,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppManageUnitsRoute: typeof AppManageUnitsRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
   AppMsorafRoute: typeof AppMsorafRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
@@ -256,6 +276,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppManageUnitsRoute: AppManageUnitsRoute,
   AppMeetingsRoute: AppMeetingsRoute,
   AppMsorafRoute: AppMsorafRoute,
   AppNotificationsRoute: AppNotificationsRoute,

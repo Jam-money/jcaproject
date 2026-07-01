@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, Calendar, Users2, Bell, FileBarChart2,
   UserCircle2, LogOut, Sun, Moon, Menu, X, CalendarCheck2, Search, CheckCheck, ClipboardList,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,13 +15,14 @@ import { format, parseISO } from "date-fns";
 import { InstallButton } from "@/components/ui/InstallPrompt";
 
 const NAV = [
-  { to: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard, restricted: false },
-  { to: "/calendar",      label: "Calendar",       icon: Calendar,        restricted: false },
-  { to: "/meetings",      label: "Meetings",       icon: Users2,          restricted: false },
-  { to: "/notifications", label: "Notifications",  icon: Bell,            restricted: false },
-  { to: "/reports",       label: "Reports",        icon: FileBarChart2,   restricted: false },
-  { to: "/msoraf",        label: "MSORAF",         icon: ClipboardList,   restricted: true  },
-  { to: "/profile",       label: "Profile",        icon: UserCircle2,     restricted: false },
+  { to: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard, restricted: false, adminOnly: false },
+  { to: "/calendar",      label: "Calendar",       icon: Calendar,        restricted: false, adminOnly: false },
+  { to: "/meetings",      label: "Meetings",       icon: Users2,          restricted: false, adminOnly: false },
+  { to: "/notifications", label: "Notifications",  icon: Bell,            restricted: false, adminOnly: false },
+  { to: "/reports",       label: "Reports",        icon: FileBarChart2,   restricted: false, adminOnly: false },
+  { to: "/msoraf",        label: "MSORAF",         icon: ClipboardList,   restricted: true,  adminOnly: false },
+  { to: "/manage-units",  label: "Manage Units",   icon: ShieldCheck,     restricted: false, adminOnly: true  },
+  { to: "/profile",       label: "Profile",        icon: UserCircle2,     restricted: false, adminOnly: false },
 ] as const;
 
 export function Shell() {
@@ -36,7 +38,12 @@ export function Shell() {
 
   // Only admin and director can see MSORAF
   const canAccessMsoraf = role === "admin" || role === "director";
-  const filteredNav = NAV.filter(item => !item.restricted || canAccessMsoraf);
+  const isAdmin = role === "admin";
+  const filteredNav = NAV.filter(item => {
+    if (item.restricted && !canAccessMsoraf) return false;
+    if (item.adminOnly && !isAdmin) return false;
+    return true;
+  });
 
   useEffect(() => { setOpen(false); }, [loc.pathname]);
 
