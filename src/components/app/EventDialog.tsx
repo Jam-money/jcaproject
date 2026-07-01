@@ -509,7 +509,7 @@ export function EventDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
           <DialogTitle>
             {event ? (canEdit ? "Edit event" : "Event Details") : "New event"}
@@ -523,7 +523,7 @@ export function EventDialog({
             <Input value={title} onChange={e => setTitle(e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Type</Label>
               <Select value={type} onValueChange={v => setType(v as EventType)} disabled={!canEdit}>
@@ -561,7 +561,7 @@ export function EventDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Start</Label>
               <Input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} />

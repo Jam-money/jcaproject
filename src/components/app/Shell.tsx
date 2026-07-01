@@ -169,7 +169,7 @@ export function Shell() {
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-border bg-background shadow-lg z-50 overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-xl border border-border bg-background shadow-lg z-50 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <span className="font-semibold text-sm">Notifications</span>
                   {unread > 0 && (
