@@ -190,20 +190,20 @@ export function CalendarPage() {
 
   return (
     <div className="space-y-4 max-w-7xl">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+      <div className="flex flex-wrap items-center gap-3 justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-semibold">Calendar</h1>
+          <h1 className="text-2xl font-semibold">Calendar</h1>
           <p className="text-sm text-muted-foreground">
             {format(cursor, view === "day" ? "EEEE, MMM d, yyyy" : "MMMM yyyy")}
             {!isAdmin && myUnit && <span className="ml-2 text-xs font-medium uppercase tracking-wide text-primary">· {myUnit}</span>}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <Tabs value={view} onValueChange={v => setView(v as View)} className="w-full sm:w-auto">
-            <TabsList className="w-full sm:w-auto">
-              <TabsTrigger value="day" className="flex-1">Day</TabsTrigger>
-              <TabsTrigger value="week" className="flex-1">Week</TabsTrigger>
-              <TabsTrigger value="month" className="flex-1">Month</TabsTrigger>
+        <div className="flex items-center gap-2">
+          <Tabs value={view} onValueChange={v => setView(v as View)}>
+            <TabsList>
+              <TabsTrigger value="day">Day</TabsTrigger>
+              <TabsTrigger value="week">Week</TabsTrigger>
+              <TabsTrigger value="month">Month</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="flex items-center gap-1">
@@ -211,23 +211,18 @@ export function CalendarPage() {
             <Button variant="outline" size="sm"   onClick={() => setCursor(new Date())}>Today</Button>
             <Button variant="outline" size="icon" onClick={() => nav(1)}><ChevronRight className="h-4 w-4"/></Button>
           </div>
-          {canEdit && <Button onClick={() => openNew()} className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-1"/>New event</Button>}
+          {canEdit && <Button onClick={() => openNew()}><Plus className="h-4 w-4 mr-1"/>New event</Button>}
         </div>
       </div>
 
       <AttendeeLegend />
 
       <Card className="shadow-soft overflow-hidden">
-        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+
         {view === "month" && (
           <>
-            <div className="hidden sm:grid grid-cols-7 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
+            <div className="grid grid-cols-7 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
               {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-                <div key={d} className="px-2 py-2 text-center">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 sm:hidden bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
-              {["S","M","T","W","T","F","S"].map(d => (
                 <div key={d} className="px-2 py-2 text-center">{d}</div>
               ))}
             </div>
@@ -239,7 +234,7 @@ export function CalendarPage() {
               const rowH = Math.max(110, DATE_H + visibleLanes * LANE_H + (hasOverflow ? LANE_H : 0) + PADDING);
 
               return (
-                <div key={rowIdx} className="relative grid grid-cols-7 border-t border-border min-w-[600px] sm:min-w-0" style={{ height: rowH }}>
+                <div key={rowIdx} className="relative grid grid-cols-7 border-t border-border" style={{ height: rowH }}>
 
                   {week.map(d => {
                     const inMonth = isSameMonth(d, cursor);
@@ -353,7 +348,6 @@ export function CalendarPage() {
             })}
           </>
         )}
-        </div>
 
         {view !== "month" && (
           <div className="divide-y divide-border">
