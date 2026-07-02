@@ -7,6 +7,7 @@ import { format, isToday, isAfter, parseISO, addDays } from "date-fns";
 import { CalendarDays, Clock, Video, CalendarCheck2 } from "lucide-react";
 import { EVENT_TYPE_LABELS, type EventRow } from "@/lib/db";
 import { useAuth } from "@/lib/auth";
+import { AttendanceWidget } from "@/components/app/AttendanceWidget";
 
 export const Route = createFileRoute("/_app/dashboard")({ component: Dashboard });
 
@@ -38,6 +39,12 @@ function Dashboard() {
         <h1 className="text-2xl font-semibold">Good {greet()}, {profile?.full_name?.split(" ")[0] ?? "there"}</h1>
         <p className="text-sm text-muted-foreground mt-1">Here's what's on the Regional Director's plate {role === "admin" ? "to coordinate" : "today"}.</p>
       </div>
+
+      {profile?.id && (
+        <div className="max-w-md">
+          <AttendanceWidget userId={profile.id} />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat icon={CalendarDays}   label="Today's schedule" value={todayEvents.length} sub={`${events.length} upcoming total`}  tone="info"/>

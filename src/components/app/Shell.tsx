@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, Calendar, Users2, Bell, FileBarChart2,
   UserCircle2, LogOut, Sun, Moon, Menu, X, CalendarCheck2, Search, CheckCheck, ClipboardList,
-  ShieldCheck,
+  ShieldCheck, ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,6 +20,7 @@ const NAV = [
   { to: "/meetings",      label: "Meetings",       icon: Users2,          restricted: false, adminOnly: false },
   { to: "/notifications", label: "Notifications",  icon: Bell,            restricted: false, adminOnly: false },
   { to: "/reports",       label: "Reports",        icon: FileBarChart2,   restricted: false, adminOnly: false },
+  { to: "/attendance",    label: "Attendance",     icon: ClipboardCheck,  restricted: false, adminOnly: true  },
   { to: "/msoraf",        label: "MSORAF",         icon: ClipboardList,   restricted: true,  adminOnly: false },
   { to: "/manage-units",  label: "Manage Units",   icon: ShieldCheck,     restricted: false, adminOnly: true  },
   { to: "/profile",       label: "Profile",        icon: UserCircle2,     restricted: false, adminOnly: false },
