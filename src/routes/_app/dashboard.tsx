@@ -34,26 +34,26 @@ function Dashboard() {
   const withLink    = events.filter(e => !!(e as any).meeting_link);
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6 max-w-7xl w-full">
       <div>
         <h1 className="text-2xl font-semibold">Good {greet()}, {profile?.full_name?.split(" ")[0] ?? "there"}</h1>
-        <p className="text-sm text-muted-foreground mt-1">Here's what's on the Regional Director's plate {role === "admin" ? "to coordinate" : "today"}.</p>
+        <p className="text-sm text-muted-foreground mt-1">Here's your agenda for today.</p>
       </div>
 
       {profile?.id && (
-        <div className="max-w-md">
+        <div className="w-full max-w-md mx-auto sm:mx-0">
           <AttendanceWidget userId={profile.id} />
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat icon={CalendarDays}   label="Today's schedule" value={todayEvents.length} sub={`${events.length} upcoming total`}  tone="info"/>
         <Stat icon={Clock}          label="This week"         value={thisWeek.length}    sub="events scheduled"                   tone="warning"/>
         <Stat icon={Video}          label="Online meetings"   value={withLink.length}    sub="with meeting link"                  tone="success"/>
         <Stat icon={CalendarCheck2} label="Total upcoming"    value={events.length}      sub="all future events"                  tone="destructive"/>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6 shadow-soft">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Today's schedule</h2>

@@ -35,23 +35,23 @@ function Meetings() {
   const past = filtered.filter(e => isPast(parseISO(e.end_time)));
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="space-y-6 max-w-5xl w-full">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Meetings & schedule</h1>
-          <p className="text-sm text-muted-foreground">Full agenda for the Regional Director.</p>
+          <p className="text-sm text-muted-foreground">Your agenda and upcoming meetings</p>
         </div>
-        {canEdit && <Button onClick={()=>{setEditing(null); setOpen(true);}}><Plus className="h-4 w-4 mr-1"/>Schedule</Button>}
+        {canEdit && <Button onClick={()=>{setEditing(null); setOpen(true);}} className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-1"/>Schedule</Button>}
       </div>
 
-      <div className="relative max-w-md">
+      <div className="relative max-w-md w-full">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
         <Input placeholder="Search meetings…" value={q} onChange={e=>setQ(e.target.value)} className="pl-9"/>
       </div>
 
       <section>
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Upcoming · {upcoming.length}</h2>
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {upcoming.map(ev => <MeetingCard key={ev.id} ev={ev} onClick={()=>{setEditing(ev); setOpen(true);}}/>)}
           {upcoming.length === 0 && <p className="text-sm text-muted-foreground">No upcoming meetings.</p>}
         </div>
@@ -59,7 +59,7 @@ function Meetings() {
 
       <section>
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Past · {past.length}</h2>
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {past.slice(0,12).map(ev => <MeetingCard key={ev.id} ev={ev} onClick={()=>{setEditing(ev); setOpen(true);}} muted/>)}
           {past.length === 0 && <p className="text-sm text-muted-foreground">No past meetings.</p>}
         </div>

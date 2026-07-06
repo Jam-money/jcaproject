@@ -529,29 +529,29 @@ export function EventDialog({
               <Select value={type} onValueChange={v => setType(v as EventType)} disabled={!canEdit}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-  <SelectItem value="meeting">Meeting</SelectItem>
-  <SelectItem value="event">Event</SelectItem>
-  <SelectItem value="training_conduct">Training (Conduct)</SelectItem>
-  <SelectItem value="personal">Personal</SelectItem>
   <SelectItem value="attendance_to_meeting">Attendance to Meeting/Activities</SelectItem>
   <SelectItem value="competency_based_interview">Competency Based Interview</SelectItem>
-  <SelectItem value="investigation">Investigation</SelectItem>
-  <SelectItem value="senior_staff_meeting">Senior Staff Meeting</SelectItem>
+  <SelectItem value="courtesy_visit">Courtesy Visit</SelectItem>
   <SelectItem value="data_processing">Data Processing</SelectItem>
   <SelectItem value="directorate_meeting">Directorate Meeting</SelectItem>
-  <SelectItem value="kasalan_ng_bayan">Kasalan ng Bayan</SelectItem>
-  <SelectItem value="mobile_serbisyo_caravan">Mobile Serbisyo Caravan</SelectItem>
-  <SelectItem value="one_stop_shop">One Stop Shop</SelectItem>
-  <SelectItem value="robac_meeting">ROBAC Meeting</SelectItem>
-  <SelectItem value="national_data_review">National Data Review</SelectItem>
-  <SelectItem value="regional_data_review">Regional Data Review</SelectItem>
+  <SelectItem value="event">Event</SelectItem>
   <SelectItem value="field_supervision">Field Supervision</SelectItem>
-  <SelectItem value="press_conference">Press Conference</SelectItem>
-  <SelectItem value="official_business">Official Business</SelectItem>
+  <SelectItem value="investigation">Investigation</SelectItem>
   <SelectItem value="interagency_meeting">Interagency Meeting</SelectItem>
-  <SelectItem value="courtesy_visit">Courtesy Visit</SelectItem>
+  <SelectItem value="kasalan_ng_bayan">Kasalan ng Bayan</SelectItem>
   <SelectItem value="lcro_audit">LCRO Audit</SelectItem>
+  <SelectItem value="meeting">Meeting</SelectItem>
+  <SelectItem value="mobile_serbisyo_caravan">Mobile Serbisyo Caravan</SelectItem>
+  <SelectItem value="national_data_review">National Data Review</SelectItem>
+  <SelectItem value="official_business">Official Business</SelectItem>
+  <SelectItem value="one_stop_shop">One Stop Shop</SelectItem>
   <SelectItem value="on_leave">On Leave</SelectItem>
+  <SelectItem value="personal">Personal</SelectItem>
+  <SelectItem value="press_conference">Press Conference</SelectItem>
+  <SelectItem value="regional_data_review">Regional Data Review</SelectItem>
+  <SelectItem value="robac_meeting">ROBAC Meeting</SelectItem>
+  <SelectItem value="senior_staff_meeting">Senior Staff Meeting</SelectItem>
+  <SelectItem value="training_conduct">Training (Conduct)</SelectItem>
 </SelectContent>
               </Select>
             </div>

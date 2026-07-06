@@ -336,15 +336,15 @@ function MSORAF() {
   return (
     <div className="space-y-3">
       {/* Toolbar */}
-      <div className="flex items-center justify-between print:hidden">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft className="h-4 w-4"/></Button>
           <span className="font-semibold w-36 text-center">{format(cursor, "MMMM yyyy")}</span>
           <Button variant="outline" size="icon" onClick={nextMonth}><ChevronRight className="h-4 w-4"/></Button>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={addRow}><Plus className="h-4 w-4 mr-1"/>Add Row</Button>
-          <Button size="sm" onClick={handlePrint}><Printer className="h-4 w-4 mr-1"/>Print / Export</Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" size="sm" onClick={addRow} className="flex-1 sm:flex-none"><Plus className="h-4 w-4 mr-1"/>Add Row</Button>
+          <Button size="sm" onClick={handlePrint} className="flex-1 sm:flex-none"><Printer className="h-4 w-4 mr-1"/>Print / Export</Button>
         </div>
       </div>
 
@@ -472,7 +472,7 @@ function MSORAF() {
               <div className="font-semibold mb-8">Plotted/Organized by:</div>
               <div className="text-center w-fit">
                 <div className="border-b border-black pb-0.5 font-bold uppercase tracking-wide">
-                  {currentUserName || "___________________________"}
+                  Kristine Jay T. Ong-Ebsolo
                 </div>
                 <div className="text-[9px] mt-0.5">Administrative Assistant I</div>
               </div>
@@ -487,9 +487,9 @@ function MSORAF() {
                   suppressContentEditableWarning
                   className="border-b border-black pb-0.5 font-bold uppercase tracking-wide outline-none focus:bg-yellow-50 block"
                 >
-                  JOSE B. TUASON, JR.
+                  Neil Lester A. Gimeno
                 </div>
-                <div className="text-[9px] mt-0.5">Chief Administrative Officer</div>
+                <div className="text-[9px] mt-0.5">Administrative Officer IV</div>
               </div>
             </div>
 
@@ -512,4 +512,4 @@ function MSORAF() {
       </div>
     </div>
   );
-}
+} 

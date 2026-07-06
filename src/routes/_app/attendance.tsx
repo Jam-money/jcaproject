@@ -69,7 +69,8 @@ function CheckInStatusBadge({ status }: { status: string }) {
 
 function AttendancePage() {
   const { role } = useAuth();
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const todayStr = new Date().toISOString().slice(0, 10);
+const [date, setDate] = useState(todayStr);
   const [rows, setRows] = useState<AttendanceStatusRow[]>([]);
   const [loading, setLoading] = useState(true);
 

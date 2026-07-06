@@ -189,8 +189,8 @@ export function CalendarPage() {
   };
 
   return (
-    <div className="space-y-4 max-w-7xl">
-      <div className="flex flex-wrap items-center gap-3 justify-between">
+    <div className="space-y-4 max-w-7xl w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Calendar</h1>
           <p className="text-sm text-muted-foreground">
@@ -198,12 +198,12 @@ export function CalendarPage() {
             {!isAdmin && myUnit && <span className="ml-2 text-xs font-medium uppercase tracking-wide text-primary">· {myUnit}</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Tabs value={view} onValueChange={v => setView(v as View)}>
-            <TabsList>
-              <TabsTrigger value="day">Day</TabsTrigger>
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="month">Month</TabsTrigger>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <Tabs value={view} onValueChange={v => setView(v as View)} className="w-full sm:w-auto">
+            <TabsList className="w-full sm:w-auto">
+              <TabsTrigger value="day" className="flex-1">Day</TabsTrigger>
+              <TabsTrigger value="week" className="flex-1">Week</TabsTrigger>
+              <TabsTrigger value="month" className="flex-1">Month</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="flex items-center gap-1">
@@ -211,7 +211,7 @@ export function CalendarPage() {
             <Button variant="outline" size="sm"   onClick={() => setCursor(new Date())}>Today</Button>
             <Button variant="outline" size="icon" onClick={() => nav(1)}><ChevronRight className="h-4 w-4"/></Button>
           </div>
-          {canEdit && <Button onClick={() => openNew()}><Plus className="h-4 w-4 mr-1"/>New event</Button>}
+          {canEdit && <Button onClick={() => openNew()} className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-1"/>New event</Button>}
         </div>
       </div>
 
@@ -354,13 +354,13 @@ export function CalendarPage() {
             {days.map(d => {
               const evs = evByDay(d);
               return (
-                <div key={d.toISOString()} className="grid grid-cols-[120px_1fr]">
-                  <div className="p-4 bg-muted/40 border-r border-border">
+                <div key={d.toISOString()} className="grid grid-cols-[80px_1fr] sm:grid-cols-[120px_1fr]">
+                  <div className="p-3 sm:p-4 bg-muted/40 border-r border-border">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">{format(d, "EEE")}</div>
-                    <div className="text-2xl font-bold">{format(d, "d")}</div>
+                    <div className="text-xl sm:text-2xl font-bold">{format(d, "d")}</div>
                     <div className="text-xs text-muted-foreground">{format(d, "MMM")}</div>
                   </div>
-                  <div className="p-3 space-y-2 min-h-[120px]"
+                  <div className="p-2 sm:p-3 space-y-2 min-h-[100px] sm:min-h-[120px]"
                     onDragOver={canEdit ? e => e.preventDefault() : undefined}
                     onDrop={canEdit ? e => { const id = e.dataTransfer.getData("text/plain"); void onDrop(id, d); } : undefined}>
                     {evs.length === 0 && <div className="text-xs text-muted-foreground h-full grid place-items-center">No events</div>}

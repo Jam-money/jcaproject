@@ -63,38 +63,38 @@ export function AdminAttendanceView({ date }: { date: string }) {
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto rounded-lg border -mx-4 px-4 sm:mx-0 sm:px-0">
+      <table className="w-full text-xs sm:text-sm">
         <thead className="bg-muted/50">
           <tr>
-            <th className="text-left p-3">Employee</th>
-            <th className="text-left p-3">Check-in</th>
-            <th className="text-left p-3">Break-out</th>
-            <th className="text-left p-3">Break-in</th>
-            <th className="text-left p-3">Check-out</th>
-            <th className="text-left p-3">Day status</th>
+            <th className="text-left p-2 sm:p-3">Employee</th>
+            <th className="text-left p-2 sm:p-3">Check-in</th>
+            <th className="text-left p-2 sm:p-3">Break-out</th>
+            <th className="text-left p-2 sm:p-3">Break-in</th>
+            <th className="text-left p-2 sm:p-3">Check-out</th>
+            <th className="text-left p-2 sm:p-3">Day status</th>
           </tr>
         </thead>
         <tbody>
           {rows?.map((r) => (
             <tr key={r.id} className="border-t">
-              <td className="p-3">
+              <td className="p-2 sm:p-3">
                 <div className="font-medium">{r.full_name}</div>
               </td>
-              <td className="p-3">
-                <span className={`px-2 py-0.5 rounded-full text-xs ${statusBadge(r.check_in_status)}`}>
+              <td className="p-2 sm:p-3">
+                <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs ${statusBadge(r.check_in_status)}`}>
                   {fmt(r.check_in_time)}
                 </span>
               </td>
-              <td className="p-3 text-muted-foreground">{fmt(r.break_out_time)}</td>
-              <td className="p-3">
-                <span className={`px-2 py-0.5 rounded-full text-xs ${statusBadge(r.break_in_status)}`}>
+              <td className="p-2 sm:p-3 text-muted-foreground">{fmt(r.break_out_time)}</td>
+              <td className="p-2 sm:p-3">
+                <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs ${statusBadge(r.break_in_status)}`}>
                   {fmt(r.break_in_time)}
                 </span>
               </td>
-              <td className="p-3 text-muted-foreground">{fmt(r.check_out_time)}</td>
-              <td className="p-3">
-                <span className={`px-2 py-0.5 rounded-full text-xs ${dayStatusBadge(r.day_status)}`}>
+              <td className="p-2 sm:p-3 text-muted-foreground">{fmt(r.check_out_time)}</td>
+              <td className="p-2 sm:p-3">
+                <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs ${dayStatusBadge(r.day_status)}`}>
                   {r.day_status}
                 </span>
               </td>
@@ -102,7 +102,7 @@ export function AdminAttendanceView({ date }: { date: string }) {
           ))}
           {rows?.length === 0 && (
             <tr>
-              <td colSpan={6} className="p-6 text-center text-muted-foreground">
+              <td colSpan={6} className="p-4 sm:p-6 text-center text-muted-foreground text-xs sm:text-sm">
                 No attendance records for this date.
               </td>
             </tr>

@@ -99,14 +99,14 @@ function Profile() {
   const initials = (name || profile?.email || "?").split(" ").map(s => s[0]).slice(0, 2).join("").toUpperCase();
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="max-w-xl w-full mx-auto space-y-6">
       <div><h1 className="text-2xl font-semibold">Profile settings</h1><p className="text-sm text-muted-foreground">Update your details.</p></div>
-      <Card className="p-6 space-y-5 shadow-soft">
-        <div className="flex items-center gap-4">
+      <Card className="p-4 sm:p-6 space-y-5 shadow-soft">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
           <div className="relative shrink-0">
-            <Avatar className="h-24 w-24">
+            <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
               <AvatarImage src={(profile as any)?.avatar_url ?? undefined} alt={name} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-2xl">{initials}</AvatarFallback>
+              <AvatarFallback className="bg-primary text-primary-foreground text-xl sm:text-2xl">{initials}</AvatarFallback>
             </Avatar>
 
             <button
@@ -114,7 +114,7 @@ function Profile() {
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               title="Change photo"
-              className="absolute bottom-0 right-0 grid place-items-center h-9 w-9 rounded-full bg-primary text-primary-foreground border-2 border-background shadow-md hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="absolute bottom-0 right-0 grid place-items-center h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-primary text-primary-foreground border-2 border-background shadow-md hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
             </button>
@@ -127,9 +127,9 @@ function Profile() {
               onChange={handleFileSelect}
             />
           </div>
-          <div>
+          <div className="text-center sm:text-left">
             <div className="font-medium">{profile?.email}</div>
-            <div className="text-xs text-muted-foreground capitalize">Role: {role}</div>
+            <div className="text-xs text-muted-foreground capitalize">{(profile as any)?.position ?? role}</div>
             {(profile as any)?.avatar_url && (
               <button
                 type="button"
@@ -143,7 +143,7 @@ function Profile() {
           </div>
         </div>
         <div className="space-y-1.5"><Label>Full name</Label><Input value={name} onChange={e=>setName(e.target.value)}/></div>
-        <Button onClick={save} disabled={busy}>Save changes</Button>
+        <Button onClick={save} disabled={busy} className="w-full sm:w-auto">Save changes</Button>
       </Card>
     </div>
   );

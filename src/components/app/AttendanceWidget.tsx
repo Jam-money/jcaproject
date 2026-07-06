@@ -8,11 +8,11 @@ import { Clock, LogIn, Coffee, LogOut, CheckCircle2 } from "lucide-react";
 const toMin = (h: number, m = 0) => h * 60 + m;
 const nowMin = () => { const d = new Date(); return toMin(d.getHours(), d.getMinutes()); };
 
-const CHECK_IN_START  = toMin(8);
-const CHECK_IN_END    = toMin(11, 59);
+const CHECK_IN_START  = toMin(7);
+const CHECK_IN_END    = toMin(8);
 const BREAK_OUT_START = toMin(12);
 const BREAK_IN_START  = toMin(12);
-const BREAK_IN_END    = toMin(16, 59);
+const BREAK_IN_END    = toMin(13);
 const CHECK_OUT_START = toMin(17);
 
 type AttendanceRow = {
@@ -77,9 +77,9 @@ export function AttendanceWidget({ userId }: { userId: string }) {
   const hasBrokenIn   = !!rec?.break_in_time;
   const hasCheckedOut = !!rec?.check_out_time;
 
-  const canCheckIn   = mn >= CHECK_IN_START  && mn <= CHECK_IN_END;
+  const canCheckIn   = mn >= CHECK_IN_START; // Can check in from 7:00 AM onwards (no upper limit)
   const canBreakOut  = mn >= BREAK_OUT_START;
-  const canBreakIn   = mn >= BREAK_IN_START  && mn <= BREAK_IN_END;
+  const canBreakIn   = mn >= BREAK_IN_START; // Can break in from 12:00 PM onwards (no upper limit)
   const canCheckOut  = mn >= CHECK_OUT_START;
   const missedWindow = !hasCheckedIn && mn > CHECK_IN_END;
 
@@ -128,12 +128,12 @@ export function AttendanceWidget({ userId }: { userId: string }) {
   // ── Day complete ──────────────────────────────────────────────────────────
   if (hasCheckedOut) {
     return (
-      <div className="rounded-xl border border-border p-4 space-y-3">
+      <div className="rounded-xl border border-border p-4 space-y-3 w-full">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-green-500" />
           <h3 className="font-semibold text-sm">Attendance Complete</h3>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-2 gap-2 text-xs sm:gap-3">
           <TimeRow label="Check-in"   time={rec!.check_in_time!} />
           <TimeRow label="Break out"  time={rec!.break_out_time!} />
           <TimeRow label="Break in"   time={rec!.break_in_time} />
@@ -144,43 +144,40 @@ export function AttendanceWidget({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="rounded-xl border border-border p-4 space-y-4">
+    <div className="rounded-xl border border-border p-4 space-y-4 w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-muted-foreground" />
           <h3 className="font-semibold text-sm">WFH Attendance</h3>
         </div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground hidden sm:inline-block">
           {format(new Date(), "EEEE, MMM d")}
         </span>
+      </div>
+      {/* Mobile date display */}
+      <div className="text-xs text-muted-foreground sm:hidden text-center">
+        {format(new Date(), "EEEE, MMM d")}
       </div>
 
       {/* Timeline */}
       <div className="space-y-2">
 
         {/* ── CHECK IN ── */}
-        {!hasCheckedIn && !missedWindow && canCheckIn && (
+        {!hasCheckedIn && canCheckIn && (
           <ActionButton
             icon={<LogIn className="w-4 h-4" />}
             label="Check In"
-            sublabel="Window: 8:00 – 11:59 AM"
+            sublabel="Window: 7:00 AM onwards"
             onClick={handleCheckIn}
             color="primary"
           />
         )}
-        {!hasCheckedIn && !missedWindow && !canCheckIn && mn < CHECK_IN_START && (
+        {!hasCheckedIn && !canCheckIn && mn < CHECK_IN_START && (
           <InfoRow
             icon={<LogIn className="w-4 h-4" />}
-            label="Check-in opens at 8:00 AM"
+            label="Check-in opens at 7:00 AM"
             color="muted"
-          />
-        )}
-        {!hasCheckedIn && missedWindow && (
-          <InfoRow
-            icon={<LogIn className="w-4 h-4" />}
-            label="Check-in window closed — marked absent"
-            color="destructive"
           />
         )}
         {hasCheckedIn && (
@@ -188,7 +185,7 @@ export function AttendanceWidget({ userId }: { userId: string }) {
             icon={<LogIn className="w-4 h-4" />}
             label="Checked in"
             time={rec!.check_in_time!}
-            late={new Date(rec!.check_in_time!).getHours() >= 12}
+            late={new Date(rec!.check_in_time!).getHours() >= 8 && new Date(rec!.check_in_time!).getMinutes() > 0}
           />
         )}
 
@@ -222,7 +219,7 @@ export function AttendanceWidget({ userId }: { userId: string }) {
           <ActionButton
             icon={<LogIn className="w-4 h-4" />}
             label="Break In"
-            sublabel="Window: 12:00 – 4:59 PM"
+            sublabel="Window: 12:00 – 1:00 PM"
             onClick={handleBreakIn}
             color="blue"
           />
@@ -234,18 +231,12 @@ export function AttendanceWidget({ userId }: { userId: string }) {
             color="muted"
           />
         )}
-        {hasBrokenOut && !hasBrokenIn && mn > BREAK_IN_END && (
-          <InfoRow
-            icon={<LogIn className="w-4 h-4" />}
-            label="Break-in window closed"
-            color="destructive"
-          />
-        )}
         {hasBrokenIn && (
           <DoneRow
             icon={<LogIn className="w-4 h-4" />}
             label="Break in"
             time={rec!.break_in_time!}
+            late={new Date(rec!.break_in_time!).getHours() >= 13 && new Date(rec!.break_in_time!).getMinutes() > 0}
           />
         )}
 
@@ -323,10 +314,10 @@ function ActionButton({ icon, label, sublabel, onClick, color }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full rounded-lg px-4 py-2.5 flex items-center gap-3 transition-colors ${cls}`}
+      className={`w-full rounded-lg px-4 py-3 sm:py-2.5 flex items-center gap-3 transition-colors ${cls}`}
     >
       {icon}
-      <div className="text-left">
+      <div className="text-left flex-1">
         <div className="font-semibold text-sm">{label}</div>
         <div className="text-xs opacity-80">{sublabel}</div>
       </div>
