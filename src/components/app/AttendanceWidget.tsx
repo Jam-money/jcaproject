@@ -54,7 +54,9 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
 export function AttendanceWidget({ userId }: { userId: string }) {
   const qc = useQueryClient();
   const [, tick] = useState(0);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const isFriday = today.getDay() === 5; // Friday is day 5
 
   // Re-render every 30 s so window checks stay live
   useEffect(() => {
@@ -63,8 +65,9 @@ export function AttendanceWidget({ userId }: { userId: string }) {
   }, []);
 
   const { data: rec, isLoading } = useQuery({
-    queryKey: ["attendance", userId, today],
+    queryKey: ["attendance", userId, todayStr],
     queryFn:  () => fetchToday(userId),
+    enabled: isFriday,
   });
 
   const invalidate = useCallback(() => {
@@ -87,7 +90,7 @@ export function AttendanceWidget({ userId }: { userId: string }) {
     if (!canCheckIn) return;
     await supabase.from("attendance").insert({
       user_id: userId,
-      attendance_date: today,
+      attendance_date: todayStr,
       check_in_time: new Date().toISOString(),
     });
     invalidate();
@@ -121,6 +124,24 @@ export function AttendanceWidget({ userId }: { userId: string }) {
     return (
       <div className="rounded-xl border border-border p-4 text-sm text-muted-foreground animate-pulse">
         Loading attendance…
+      </div>
+    );
+  }
+
+  // Show message when it's not Friday
+  if (!isFriday) {
+    return (
+      <div className="rounded-xl border border-border p-4 space-y-3 w-full">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm">WFH Attendance</h3>
+        </div>
+        <div className="text-sm text-muted-foreground text-center py-4">
+          WFH attendance is only available on Fridays.
+        </div>
+        <div className="text-xs text-muted-foreground text-center">
+          {format(today, "EEEE, MMM d")}
+        </div>
       </div>
     );
   }
