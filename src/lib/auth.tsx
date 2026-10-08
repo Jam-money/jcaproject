@@ -3,7 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "admin" | "director" | "staff";
-export type AppUnit = "CRASD" | "SOCD";
+export type AppUnit = "CRASD" | "SOCD" | "ORD";
 
 export interface Profile {
   id: string;
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadProfile = async (uid: string) => {
     const [{ data: p }, { data: r }] = await Promise.all([
-      supabase.from("profiles").select("id,full_name,email,avatar_url,position,unit").eq("id", uid).maybeSingle(),
+      (supabase as any).from("profiles").select("id,full_name,email,avatar_url,position,unit").eq("id", uid).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", uid).maybeSingle(),
     ]);
     setProfile(p ?? null);

@@ -26,8 +26,8 @@ type AttendanceRow = {
 };
 
 async function fetchToday(userId: string): Promise<AttendanceRow | null> {
-  const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await supabase
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data, error } = await (supabase as any)
     .from("attendance")
     .select("*")
     .eq("user_id", userId)
@@ -88,7 +88,7 @@ export function AttendanceWidget({ userId }: { userId: string }) {
 
   const handleCheckIn = async () => {
     if (!canCheckIn) return;
-    await supabase.from("attendance").insert({
+    await (supabase as any).from("attendance").insert({
       user_id: userId,
       attendance_date: todayStr,
       check_in_time: new Date().toISOString(),
@@ -98,7 +98,7 @@ export function AttendanceWidget({ userId }: { userId: string }) {
 
   const handleBreakOut = async () => {
     if (!rec || !canBreakOut || hasBrokenOut) return;
-    await supabase.from("attendance")
+    await (supabase as any).from("attendance")
       .update({ break_out_time: new Date().toISOString() })
       .eq("id", rec.id);
     invalidate();
@@ -106,7 +106,7 @@ export function AttendanceWidget({ userId }: { userId: string }) {
 
   const handleBreakIn = async () => {
     if (!rec || !canBreakIn || hasBrokenIn) return;
-    await supabase.from("attendance")
+    await (supabase as any).from("attendance")
       .update({ break_in_time: new Date().toISOString() })
       .eq("id", rec.id);
     invalidate();
@@ -114,7 +114,7 @@ export function AttendanceWidget({ userId }: { userId: string }) {
 
   const handleCheckOut = async () => {
     if (!rec || !canCheckOut || hasCheckedOut) return;
-    await supabase.from("attendance")
+    await (supabase as any).from("attendance")
       .update({ check_out_time: new Date().toISOString() })
       .eq("id", rec.id);
     invalidate();

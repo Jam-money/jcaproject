@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import type { EventRow, EventType } from "@/lib/db";
-import { logAudit, EVENT_TYPE_LABELS, EVENT_TYPE_BADGE } from "@/lib/db";
+import { logAudit, eventTypeLabel, EVENT_TYPE_BADGE } from "@/lib/db";
 import { format, parseISO } from "date-fns";
 import {
   ChevronDown, ChevronUp, X,
@@ -20,7 +20,7 @@ import {
 import {
   ATTENDEES, AttendeeValue, RSVPStatus, RSVPMap,
   attendeePillStyle, colorForValue, labelForValue,
-  staffByDept, staffTag,
+  staffByDept, staffTag, isAssignedTo, loadUnitOverrides,
 } from "@/lib/attendees";
 
 async function notifyDirectors(title: string, body: string, link = "/calendar") {
@@ -29,6 +29,23 @@ async function notifyDirectors(title: string, body: string, link = "/calendar") 
   await supabase.from("notifications").insert(
     roles.map(r => ({ user_id: r.user_id, title, body, link, read: false }))
   );
+}
+
+async function notifyReportAssignees(assignees: string[], selfId: string, title: string, body: string) {
+  if (!assignees.length) return;
+  const [{ data: profs }, { data: dirs }] = await Promise.all([
+    (supabase as any).from("profiles").select("id,email,full_name,unit") as Promise<{ data: { id: string; email: string | null; full_name: string | null; unit: string | null }[] | null }>,
+    supabase.from("user_roles").select("user_id").eq("role", "director"),
+  ]);
+  const directors = new Set((dirs ?? []).map(d => d.user_id));
+  const targets = (profs ?? []).filter(p => p.id !== selfId && isAssignedTo(assignees, {
+    email: p.email, unit: p.unit, fullName: p.full_name, role: directors.has(p.id) ? "director" : null,
+  }));
+  if (!targets.length) return toast.warning("No matching user accounts found to notify for the selected report assignees.");
+  const { error } = await (supabase.rpc as any)("notify_users", {
+    p_user_ids: targets.map(p => p.id), p_title: title, p_body: body, p_link: "/reports",
+  });
+  if (error) toast.warning("Could not send report notifications: " + error.message);
 }
 
 async function notifyAdmins(title: string, body: string, link = "/calendar") {
@@ -67,7 +84,7 @@ async function syncToMsoraf(ev: {
   if (existing) {
     const res = await (supabase.from("msoraf_rows" as any)
       .update(payload)
-      .eq("id", existing.id));
+      .eq("id", (existing as any).id));
     error = res.error;
   } else {
     const res = await (supabase.from("msoraf_rows" as any)
@@ -90,7 +107,13 @@ function AttendeeSelect({
   onChange: (v: string[]) => void;
   disabled?: boolean;
 }) {
-  const [openDept, setOpenDept] = useState<"SOCD" | "CRASD" | null>(null);
+  const [openDept, setOpenDept] = useState<"SOCD" | "CRASD" | "ORD" | null>(null);
+  const [, bumpStaff] = useState(0);
+
+  // Pull unit members from profiles so Manage Units assignments show up in the picker
+  useEffect(() => {
+    void loadUnitOverrides().then(() => bumpStaff(n => n + 1));
+  }, [openDept]);
 
   const toggle = (v: string) =>
     onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v]);
@@ -102,7 +125,7 @@ function AttendeeSelect({
       <div className="flex flex-wrap gap-2">
         {ATTENDEES.map(a => {
           const selected = value.includes(a.value);
-          const isGroup  = a.value === "SOCD" || a.value === "CRASD";
+          const isGroup  = a.value === "SOCD" || a.value === "CRASD" || a.value === "ORD";
           const deptCount = isGroup
             ? value.filter(v => v.startsWith("staff:") && colorForValue(v).value === a.value).length
             : 0;
@@ -112,7 +135,9 @@ function AttendeeSelect({
               key={a.value}
               type="button"
               disabled={disabled}
-              onClick={() => toggle(a.value)}
+              onClick={() => isGroup
+                ? setOpenDept(openDept === a.value ? null : (a.value as "SOCD" | "CRASD" | "ORD"))
+                : toggle(a.value)}
               style={selected ? { background: a.bg, color: a.text, borderColor: a.border } : undefined}
               className={[
                 "inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full text-xs font-semibold border transition-all select-none",
@@ -135,7 +160,7 @@ function AttendeeSelect({
                 <span
                   onClick={e => {
                     e.stopPropagation();
-                    setOpenDept(openDept === a.value ? null : (a.value as "SOCD" | "CRASD"));
+                    setOpenDept(openDept === a.value ? null : (a.value as "SOCD" | "CRASD" | "ORD"));
                   }}
                   className="ml-0.5 -mr-1 p-0.5 rounded-full hover:bg-black/10"
                 >
@@ -301,7 +326,12 @@ export function EventDialog({
   open: boolean; onOpenChange: (o: boolean) => void;
   event: EventRow | null; defaultDate?: Date; canEdit: boolean;
 }) {
-  const { role } = useAuth();
+  const { role, user: authUser } = useAuth();
+  const [, bumpColors] = useState(0);
+  useEffect(() => {
+    if (open) void loadUnitOverrides().then(() => bumpColors(n => n + 1));
+  }, [open]);
+  const canEditReport = canEdit && (!event || event.created_by === authUser?.id);
   const [title, setTitle]             = useState("");
   const [description, setDescription] = useState("");
   const [type, setType]               = useState<EventType>("meeting");
@@ -312,6 +342,12 @@ export function EventDialog({
   const [meetingLink, setMeetingLink] = useState("");
   const [attendees, setAttendees]     = useState<string[]>([]);
   const [busy, setBusy]               = useState(false);
+  const [customType, setCustomType]   = useState("");
+  const [needsReport, setNeedsReport] = useState(false);
+  const [reportDue, setReportDue]     = useState("");
+  const [reportBy, setReportBy]       = useState<string[]>([]);
+  const [origReportBy, setOrigReportBy] = useState<string[]>([]);
+  const [reportCategory, setReportCategory] = useState("");
 
   // RSVP — only RD writes to this
   const [rsvpMap, setRsvpMap]     = useState<RSVPMap>({});
@@ -336,6 +372,7 @@ export function EventDialog({
       setTitle(event.title);
       setDescription(event.description ?? "");
       setType(event.event_type);
+      setCustomType((event as any).custom_type ?? "");
       setLocation(event.location ?? "");
       setNotes(event.notes ?? "");
       setMeetingLink(event.meeting_link ?? "");
@@ -358,6 +395,12 @@ export function EventDialog({
       setMyRsvp(map["RD"] ?? null);
       setDirectorNote(nts["RD"] ?? "");
 
+      setNeedsReport(false); setReportDue(""); setReportBy([]); setOrigReportBy([]); setReportCategory("");
+      void (supabase as any).from("event_reports").select("deadline,assignees,category").eq("event_id", event.id).maybeSingle().then(({ data }: any) => {
+        if (!data) return;
+        setNeedsReport(true); setReportDue(data.deadline ?? ""); setReportCategory(data.category ?? ""); { const a = Array.isArray(data.assignees) ? data.assignees : []; setReportBy(a); setOrigReportBy(a); }
+      });
+
       // Fetch creator name
       const createdBy = (event as any).created_by;
       if (createdBy) {
@@ -371,13 +414,14 @@ export function EventDialog({
       const d = defaultDate ?? new Date();
       const s = new Date(d); s.setHours(9, 0, 0, 0);
       const e = new Date(d); e.setHours(10, 0, 0, 0);
-      setTitle(""); setDescription(""); setType("meeting");
+      setTitle(""); setDescription(""); setType("meeting"); setCustomType("");
       setLocation(""); setNotes(""); setMeetingLink(""); setAttendees([]);
       setStart(format(s, "yyyy-MM-dd'T'HH:mm"));
       setEnd(format(e, "yyyy-MM-dd'T'HH:mm"));
       setRsvpMap({}); setRsvpNotes({});
       setMyRsvp(null); setDirectorNote("");
       setCreatorName(null);
+      setNeedsReport(false); setReportDue(""); setReportBy([]); setReportCategory("");
     }
     setShowProposeTime(false); setShowAddNote(false);
     setProposeStart(""); setProposeEnd(""); setProposeNote("");
@@ -389,15 +433,31 @@ export function EventDialog({
     setBusy(true);
     const { data: { user } } = await supabase.auth.getUser();
     const payload = {
-      title, description, event_type: type, location, notes, meeting_link: meetingLink || null, attendees,
+      title, description, event_type: type, custom_type: (type as string) === "other" ? customType.trim() || null : null, location, notes, meeting_link: meetingLink || null, attendees,
       start_time: new Date(start).toISOString(),
       end_time:   new Date(end).toISOString(),
-    };
+    } as any;
     let res;
     if (event) res = await supabase.from("events").update(payload).eq("id", event.id).select().single();
     else        res = await supabase.from("events").insert({ ...payload, created_by: user!.id }).select().single();
     setBusy(false);
     if (res.error) return toast.error(res.error.message);
+
+    if (!canEditReport) {
+      // only the event creator manages the report settings
+    } else if (needsReport) {
+      const { error: rErr } = await (supabase as any).from("event_reports").upsert(
+        { event_id: res.data.id, deadline: reportDue || null, category: reportCategory || null, assignees: reportBy, updated_by: user!.id, updated_at: new Date().toISOString() },
+        { onConflict: "event_id" });
+      if (rErr) toast.warning("Event saved, but report failed: " + rErr.message);
+      else await notifyReportAssignees(
+        reportBy.filter(a => !origReportBy.includes(a)), user!.id,
+        `Report assigned: ${title}`,
+        `You are assigned to make the report${reportDue ? ` — due ${format(new Date(reportDue + "T00:00"), "MMM d, yyyy")}` : ""}.`,
+      );
+    } else if (event) {
+      await (supabase as any).from("event_reports").delete().eq("event_id", res.data.id);
+    }
 
     // Auto-sync into MSORAF — only when the saver is admin or director.
     // Staff-created/edited events are never written to msoraf_rows.
@@ -518,6 +578,7 @@ export function EventDialog({
 
         {/* ══ ADMIN FORM ════════════════════════════════════════════════════ */}
         {canEdit && (<fieldset className="space-y-3">
+          <div className="space-y-3 rounded-lg border border-border p-3">
           <div className="space-y-1.5">
             <Label>Title</Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} />
@@ -552,8 +613,12 @@ export function EventDialog({
   <SelectItem value="robac_meeting">ROBAC Meeting</SelectItem>
   <SelectItem value="senior_staff_meeting">Senior Staff Meeting</SelectItem>
   <SelectItem value="training_conduct">Training (Conduct)</SelectItem>
+  <SelectItem value="other">Other</SelectItem>
 </SelectContent>
               </Select>
+              {(type as string) === "other" && (
+                <Input className="mt-1.5" placeholder="Specify type" value={customType} onChange={e => setCustomType(e.target.value)} disabled={!canEdit} />
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Location</Label>
@@ -595,6 +660,35 @@ export function EventDialog({
           <div className="space-y-1.5">
             <Label>Who will attend</Label>
             <AttendeeSelect value={attendees} onChange={setAttendees} disabled={!canEdit} />
+          </div>
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input type="checkbox" checked={needsReport} disabled={!canEditReport} onChange={e => setNeedsReport(e.target.checked)} />
+              Requires a report
+            </label>
+            {needsReport && (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Report type</Label>
+                  <select value={reportCategory} onChange={e => setReportCategory(e.target.value)} disabled={!canEditReport}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm disabled:opacity-60">
+                    <option value="">Select report type…</option>
+                    <option value="pl">P&amp;L</option>
+                    <option value="info_dissemination">Info Dissemination</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Report due date</Label>
+                  <Input type="date" value={reportDue} onChange={e => setReportDue(e.target.value)} disabled={!canEditReport} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Who will make the report</Label>
+                  <AttendeeSelect value={reportBy} onChange={setReportBy} disabled={!canEditReport} />
+                </div>
+              </>
+            )}
           </div>
         </fieldset>)}
 
@@ -640,7 +734,7 @@ export function EventDialog({
             {/* Type badge + title */}
             <div className="pb-4 space-y-2">
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide ${EVENT_TYPE_BADGE[event.event_type] ?? "bg-amber-100 text-amber-700 border border-amber-200"}`}>
-                {EVENT_TYPE_LABELS[event.event_type] ?? event.event_type}
+                {eventTypeLabel(event as any)}
               </span>
               <h2 className="text-xl font-bold text-foreground leading-tight">{event.title}</h2>
               {creatorName && (

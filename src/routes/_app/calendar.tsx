@@ -17,7 +17,7 @@ import type { EventRow } from "@/lib/db";
 import {
   ATTENDEES, AttendeeValue, RSVPMap,
   attendeePillStyle, activeAttendees,
-  colorForValue, labelForValue,
+  colorForValue, labelForValue, isAssignedTo, loadUnitOverrides,
 } from "@/lib/attendees";
 
 export const Route = createFileRoute("/_app/calendar")({ component: CalendarPage });
@@ -55,12 +55,10 @@ function getRsvpNotes(ev: EventRow): Partial<Record<string, string>> {
 // Strict unit filtering: a CRASD user sees only events tagged "CRASD" in
 // attendees, a SOCD user sees only events tagged "SOCD". Admins and directors see everything.
 // The event's creator can always see their own event, regardless of unit tags.
-function eventVisibleToUnit(ev: EventRow, isAdmin: boolean, isDirector: boolean, myUnit: string | null, myUserId: string | null) {
+function eventVisibleToUnit(ev: EventRow, isAdmin: boolean, isDirector: boolean, myUnit: string | null, myUserId: string | null, me: { email?: string | null; fullName?: string | null }) {
   if (isAdmin || isDirector) return true;
   if (myUserId && (ev as any).created_by === myUserId) return true;
-  if (myUnit === null) return false;
-  const attendees = getAttendees(ev);
-  return attendees.includes(myUnit);
+  return isAssignedTo(getAttendees(ev), { email: me.email, fullName: me.fullName, unit: myUnit });
 }
 
 interface PlacedEvent {
@@ -141,10 +139,19 @@ export function CalendarPage() {
   const [editing, setEditing]         = useState<EventRow | null>(null);
   const [defaultDate, setDefaultDate] = useState<Date | undefined>();
 
+  const [, bumpColors] = useState(0);
+  useEffect(() => { void loadUnitOverrides().then(() => bumpColors(n => n + 1)); }, []);
+  const [names, setNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    void supabase.from("profiles").select("id,full_name").then(({ data }) =>
+      setNames(Object.fromEntries((data ?? []).map(p => [p.id, p.full_name ?? ""]))));
+  }, []);
+  const creatorOf = (ev: EventRow) => names[ev.created_by] || "";
+
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase.from("events").select("*").order("start_time");
-      setEvents((data ?? []).filter(ev => eventVisibleToUnit(ev, isAdmin, isDirector, myUnit, myUserId)));
+      setEvents((data ?? []).filter(ev => eventVisibleToUnit(ev, isAdmin, isDirector, myUnit, myUserId, { email: profile?.email ?? user?.email, fullName: profile?.full_name })));
     };
     void load();
 
@@ -152,7 +159,7 @@ export function CalendarPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, load)
       .subscribe();
     return () => { void supabase.removeChannel(ch); };
-  }, [isAdmin, isDirector, myUnit, myUserId]);
+  }, [isAdmin, isDirector, myUnit, myUserId, profile?.email, profile?.full_name, user?.email]);
 
   const days = useMemo(() => {
     if (view === "month") return eachDayOfInterval({ start: startOfWeek(startOfMonth(cursor)), end: endOfWeek(endOfMonth(cursor)) });
@@ -307,7 +314,7 @@ export function CalendarPage() {
                         ) : (
                           <span className="shrink-0 opacity-60 text-[10px]">↠</span>
                         )}
-                        <span className="truncate flex-1">{p.ev.title}</span>
+                        <span className="truncate flex-1" title={creatorOf(p.ev) ? `By ${creatorOf(p.ev)}` : undefined}>{p.ev.title}</span>
                         {rdDeclined && p.isEnd && (
                           <span title="RD declined"
                             className="shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[7px] font-bold bg-black/25 line-through">
@@ -409,6 +416,9 @@ export function CalendarPage() {
                               {format(parseISO(ev.start_time), "p")} – {format(parseISO(ev.end_time), "p")}
                               {ev.location ? ` · ${ev.location}` : ""}
                             </div>
+                            {creatorOf(ev) && (
+                              <div className="text-[11px] text-muted-foreground mt-0.5">Created by <span className="font-medium text-foreground">{creatorOf(ev)}</span></div>
+                            )}
                             {multi && (
                               <div className="text-[11px] text-muted-foreground mt-0.5">
                                 {format(parseISO(ev.start_time), "MMM d")} → {format(parseISO(ev.end_time), "MMM d")}

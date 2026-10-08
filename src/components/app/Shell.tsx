@@ -4,7 +4,7 @@ import { useTheme } from "@/lib/theme";
 import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, Calendar, Users2, Bell, FileBarChart2,
-  UserCircle2, LogOut, Sun, Moon, Menu, X, CalendarCheck2, Search, CheckCheck, ClipboardList,
+  UserCircle2, LogOut, Sun, Moon, Menu, X, CalendarCheck2, CheckCheck, ClipboardList,
   ShieldCheck, ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -146,11 +146,7 @@ export function Shell() {
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 h-16 flex items-center gap-3 px-4 sm:px-6 bg-background/80 backdrop-blur border-b border-border">
           <button className="lg:hidden p-2 -ml-2" onClick={() => setOpen(true)} aria-label="Open menu"><Menu className="h-5 w-5"/></button>
-          <div className="flex-1 max-w-md relative hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
-            <input placeholder="Search events…" className="w-full h-10 pl-9 pr-3 rounded-lg bg-muted border border-transparent focus:border-ring focus:outline-none text-sm" />
-          </div>
-          <div className="flex-1 sm:hidden" />
+          <div className="flex-1" />
           <InstallButton className="hidden sm:inline-flex" />
           <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
             {theme === "dark" ? <Sun className="h-4 w-4"/> : <Moon className="h-4 w-4"/>}

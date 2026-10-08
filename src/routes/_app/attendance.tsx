@@ -69,20 +69,15 @@ function CheckInStatusBadge({ status }: { status: string }) {
 
 function AttendancePage() {
   const { role } = useAuth();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = format(new Date(), "yyyy-MM-dd");
 const [date, setDate] = useState(todayStr);
   const [rows, setRows] = useState<AttendanceStatusRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Guard — admin/director only
-  if (role !== "admin" && role !== "director") {
-    return <Navigate to="/calendar" />;
-  }
-
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("attendance_status")
         .select("*")
         .eq("attendance_date", date)
@@ -99,6 +94,11 @@ const [date, setDate] = useState(todayStr);
     return () => { void supabase.removeChannel(ch); };
   }, [date]);
 
+  // Guard — admin/director only (after hooks)
+  if (role !== "admin" && role !== "director") {
+    return <Navigate to="/calendar" />;
+  }
+
   const prevDay = () => {
     const d = new Date(date); d.setDate(d.getDate() - 1);
     setDate(d.toISOString().slice(0, 10));
@@ -107,7 +107,7 @@ const [date, setDate] = useState(todayStr);
     const d = new Date(date); d.setDate(d.getDate() + 1);
     setDate(d.toISOString().slice(0, 10));
   };
-  const isToday = date === new Date().toISOString().slice(0, 10);
+  const isToday = date === format(new Date(), "yyyy-MM-dd");
 
   // Summary counts
   const total    = rows.length;
@@ -132,7 +132,7 @@ const [date, setDate] = useState(todayStr);
           </span>
           <Button variant="outline" size="icon" onClick={nextDay} disabled={isToday}><ChevronRight className="h-4 w-4"/></Button>
           {!isToday && (
-            <Button variant="outline" size="sm" onClick={() => setDate(new Date().toISOString().slice(0, 10))}>
+            <Button variant="outline" size="sm" onClick={() => setDate(format(new Date(), "yyyy-MM-dd"))}>
               Today
             </Button>
           )}

@@ -1,20 +1,34 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, isToday, isAfter, parseISO, addDays } from "date-fns";
 import { CalendarDays, Clock, Video, CalendarCheck2 } from "lucide-react";
-import { EVENT_TYPE_LABELS, type EventRow } from "@/lib/db";
+import { eventTypeLabel, type EventRow } from "@/lib/db";
 import { useAuth } from "@/lib/auth";
 import { AttendanceWidget } from "@/components/app/AttendanceWidget";
+import { isAssignedTo } from "@/lib/attendees";
+
+function getAttendees(ev: EventRow): string[] {
+  const raw = (ev as any).attendees;
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw as string[];
+  try { return JSON.parse(raw); } catch { return []; }
+}
 
 export const Route = createFileRoute("/_app/dashboard")({ component: Dashboard });
 
 function Dashboard() {
-  const { profile, role } = useAuth();
+  const { profile, role, user } = useAuth();
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const myEvents = useMemo(() => {
+    if (role === "admin" || role === "director") return events;
+    const me = { email: profile?.email ?? user?.email, unit: profile?.unit, role, fullName: profile?.full_name };
+    return events.filter(e => isAssignedTo(getAttendees(e), me));
+  }, [events, profile?.email, profile?.unit, profile?.full_name, role, user?.id, user?.email]);
 
   useEffect(() => {
     const load = async () => {
@@ -28,10 +42,10 @@ function Dashboard() {
     return () => { void supabase.removeChannel(ch); };
   }, []);
 
-  const todayEvents = events.filter(e => isToday(parseISO(e.start_time)));
-  const upcoming    = events.slice(0, 5);
-  const thisWeek    = events.filter(e => { const d = parseISO(e.start_time); return isAfter(d, new Date()) && d <= addDays(new Date(), 7); });
-  const withLink    = events.filter(e => !!(e as any).meeting_link);
+  const todayEvents = myEvents.filter(e => isToday(parseISO(e.start_time)));
+  const upcoming    = myEvents.slice(0, 5);
+  const thisWeek    = myEvents.filter(e => { const d = parseISO(e.start_time); return isAfter(d, new Date()) && d <= addDays(new Date(), 7); });
+  const withLink    = myEvents.filter(e => !!(e as any).meeting_link);
 
   return (
     <div className="space-y-6 max-w-7xl w-full">
@@ -47,10 +61,10 @@ function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat icon={CalendarDays}   label="Today's schedule" value={todayEvents.length} sub={`${events.length} upcoming total`}  tone="info"/>
+        <Stat icon={CalendarDays}   label="Today's schedule" value={todayEvents.length} sub={`${myEvents.length} upcoming total`}  tone="info"/>
         <Stat icon={Clock}          label="This week"         value={thisWeek.length}    sub="events scheduled"                   tone="warning"/>
         <Stat icon={Video}          label="Online meetings"   value={withLink.length}    sub="with meeting link"                  tone="success"/>
-        <Stat icon={CalendarCheck2} label="Total upcoming"    value={events.length}      sub="all future events"                  tone="destructive"/>
+        <Stat icon={CalendarCheck2} label="Total upcoming"    value={myEvents.length}    sub="assigned to you"                  tone="destructive"/>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -73,7 +87,7 @@ function Dashboard() {
             <h2 className="font-semibold">Upcoming meetings</h2>
             <Link to="/meetings" className="text-sm text-primary hover:underline">All meetings</Link>
           </div>
-          {upcoming.length === 0 ? <Empty icon={CalendarDays} title="No upcoming meetings" sub="Add one from the Meetings page."/> : (
+          {upcoming.length === 0 ? <Empty icon={CalendarDays} title="No upcoming meetings" sub="Events assigned to you will appear here."/> : (
             <ul className="divide-y divide-border">
               {upcoming.map(ev => (
                 <li key={ev.id} className="py-3 flex items-center gap-4">
@@ -85,7 +99,7 @@ function Dashboard() {
                     <div className="font-medium text-sm truncate">{ev.title}</div>
                     <div className="text-xs text-muted-foreground">{format(parseISO(ev.start_time),"p")} · {ev.location ?? "—"}</div>
                   </div>
-                  <Badge variant="outline">{EVENT_TYPE_LABELS[ev.event_type] ?? ev.event_type}</Badge>
+                  <Badge variant="outline">{eventTypeLabel(ev as any)}</Badge>
                 </li>
               ))}
             </ul>
@@ -121,7 +135,7 @@ function ScheduleItem({ ev }: { ev: EventRow }) {
         <div className="font-medium text-sm truncate">{ev.title}</div>
         <div className="text-xs text-muted-foreground">{format(parseISO(ev.start_time),"p")} – {format(parseISO(ev.end_time),"p")} · {ev.location ?? "—"}</div>
       </div>
-      <Badge variant="outline" className="text-xs">{EVENT_TYPE_LABELS[ev.event_type] ?? ev.event_type}</Badge>
+      <Badge variant="outline" className="text-xs">{eventTypeLabel(ev as any)}</Badge>
     </li>
   );
 }

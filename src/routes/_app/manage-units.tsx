@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/manage-units")({ component: ManageUnitsPage });
 
-type AppUnit = "CRASD" | "SOCD";
+type AppUnit = "CRASD" | "SOCD" | "ORD";
 
 interface Row {
   id: string;
@@ -29,7 +29,7 @@ function ManageUnitsPage() {
   useEffect(() => {
     if (role !== "admin") return;
     const load = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("profiles")
         .select("id,full_name,email,position,unit")
         .order("full_name");
@@ -49,7 +49,7 @@ function ManageUnitsPage() {
   }
 
   const updateUnit = async (userId: string, unit: AppUnit) => {
-    const { error } = await supabase.from("profiles").update({ unit }).eq("id", userId);
+    const { error } = await (supabase as any).from("profiles").update({ unit }).eq("id", userId);
     if (error) {
       toast.error("Failed to update unit");
       return;
@@ -63,7 +63,7 @@ function ManageUnitsPage() {
       <div>
         <h1 className="text-2xl font-semibold">Manage Units</h1>
         <p className="text-sm text-muted-foreground">
-          Assign each user to CRASD or SOCD. Users only see calendar events from their own unit.
+          Assign each user to CRASD, SOCD or ORD. Users only see calendar events from their own unit.
         </p>
       </div>
 
@@ -94,6 +94,7 @@ function ManageUnitsPage() {
                 <SelectContent>
                   <SelectItem value="CRASD">CRASD</SelectItem>
                   <SelectItem value="SOCD">SOCD</SelectItem>
+                  <SelectItem value="ORD">ORD</SelectItem>
                 </SelectContent>
               </Select>
             </div>

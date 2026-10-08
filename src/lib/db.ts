@@ -38,6 +38,7 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   courtesy_visit:             "Courtesy Visit",
   lcro_audit:                 "LCRO Audit",
   on_leave:                   "On Leave",
+  other:                      "Other",
 };
 
 export const EVENT_TYPE_BADGE: Record<string, string> = {
@@ -77,4 +78,9 @@ export async function logAudit(entity: string, entity_id: string | null, action:
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   await supabase.from("audit_logs").insert({ actor_id: user.id, entity, entity_id, action, details });
+}
+
+export function eventTypeLabel(ev: { event_type: string; custom_type?: string | null }) {
+  if (ev.event_type === "other" && ev.custom_type) return ev.custom_type;
+  return EVENT_TYPE_LABELS[ev.event_type] ?? ev.event_type;
 }

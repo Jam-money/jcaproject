@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const ATTENDEES = [
   { value: "RD",    label: "RD",    dot: "#ef4444", bg: "#fef2f2", text: "#b91c1c", border: "#fca5a5", hex: "#ef4444" },
+  { value: "ORD",   label: "ORD",   dot: "#ec4899", bg: "#fdf2f8", text: "#be185d", border: "#f9a8d4", hex: "#ec4899" },
   { value: "JBT",   label: "JBT",   dot: "#eab308", bg: "#fefce8", text: "#854d0e", border: "#fde047", hex: "#eab308" },
   { value: "SOCD",  label: "SOCD",  dot: "#22c55e", bg: "#f0fdf4", text: "#15803d", border: "#86efac", hex: "#22c55e" },
   { value: "CRASD", label: "CRASD", dot: "#3b82f6", bg: "#eff6ff", text: "#1d4ed8", border: "#93c5fd", hex: "#3b82f6" },
@@ -19,7 +21,7 @@ export interface StaffMember {
   fullName: string;     // "Luperte, Jessie C."
   position: string;     // "Statistical Specialist II"
   abbrev: string;       // "SS II"
-  department: "SOCD" | "CRASD";
+  department: "SOCD" | "CRASD" | "ORD";
 }
 
 function s(
@@ -28,7 +30,7 @@ function s(
   fullName: string,
   position: string,
   abbrev: string,
-  department: "SOCD" | "CRASD"
+  department: "SOCD" | "CRASD" | "ORD"
 ): StaffMember {
   return { id: `staff:${id}`, email, fullName, position, abbrev, department };
 }
@@ -62,20 +64,54 @@ export const STAFF: StaffMember[] = [
   s("adanteoppus",     "michahjoy.adanteoppus@psa.gov.ph",  "Adante-Oppus, Micah Joy A.", "Statistical Analyst",                "SA",     "SOCD"),
   s("sabelita",        "janvincent.sabelita@psa.gov.ph",    "Sabelita, Jan Vincent",      "Assistant Statistician",             "AS",     "SOCD"),
   s("hinampas",        "karolmae.hinampas@psa.gov.ph",      "Hinampas, Karol Mae S.",     "Assistant Statistician",             "AS",     "SOCD"),
+
+  // ── ORD ──
+  s("roque",          "c.roque@psa.gov.ph",                "Roque, Camille Nica C.",     "",                                 "",       "ORD"),
 ];
 
-export function staffByDept(dept: "SOCD" | "CRASD"): StaffMember[] {
-  return STAFF.filter(x => x.department === dept);
+// Staff pulled from the profiles table at runtime (e.g. users assigned to a unit in Manage Units)
+const dynamicStaff = new Map<string, StaffMember>();
+const unitOverride = new Map<string, StaffMember["department"]>();
+export function registerStaff(m: StaffMember) {
+  const key = m.email.toLowerCase();
+  const hit = STAFF.find(x => x.email.toLowerCase() === key);
+  if (hit) unitOverride.set(key, m.department);   // DB unit wins over the hardcoded department
+  else dynamicStaff.set(m.id, m);
+}
+
+/** Loads profiles.unit from the DB so Manage Units assignments override hardcoded departments (colors, pickers). */
+export async function loadUnitOverrides(): Promise<void> {
+  const { data } = await (supabase as any).from("profiles").select("email,full_name,position,unit").not("unit", "is", null);
+  (data ?? []).forEach((p: any) => {
+    if (!p.email) return;
+    registerStaff({ id: `staff:db-${p.email}`, email: p.email, fullName: p.full_name ?? "", position: p.position ?? "", abbrev: "", department: p.unit });
+  });
+}
+
+const effectiveDept = (x: StaffMember) => unitOverride.get(x.email.toLowerCase()) ?? x.department;
+
+export function staffByDept(dept: "SOCD" | "CRASD" | "ORD"): StaffMember[] {
+  const base = STAFF.filter(x => effectiveDept(x) === dept).map(x => ({ ...x, department: dept }));
+  const extra = [...dynamicStaff.values()].filter(x => x.department === dept);
+  return [...base, ...extra];
 }
 
 export function findStaff(id: string): StaffMember | undefined {
-  return STAFF.find(x => x.id === id);
+  const hit = STAFF.find(x => x.id === id) ?? dynamicStaff.get(id);
+  if (hit) return { ...hit, department: effectiveDept(hit) };
+  // Fallback for "staff:db-<email>" ids from profiles not yet loaded into the registry
+  if (id.startsWith("staff:db-")) {
+    const email = id.slice(9);
+    return { id, email, fullName: "", position: "", abbrev: "", department: "ORD" };
+  }
+  return undefined;
 }
 
 /** Short tag label used on pills, e.g. "SS II LUPERTE" */
 export function staffTag(member: StaffMember): string {
   const lastName = member.fullName.split(",")[0].trim().toUpperCase();
-  return `${member.abbrev} ${lastName}`;
+  if (!lastName) return member.email.split("@")[0];
+  return member.abbrev ? `${member.abbrev} ${lastName}` : lastName;
 }
 
 /** Resolves a chip's display label for ANY attendee value (dept code or staff id) */
@@ -143,4 +179,23 @@ export function attendeePillStyle(attendees: string[], rsvpMap: RSVPMap): CSSPro
 export function attendeePillStyle_single(value: string) {
   const a = colorForValue(value);
   return { background: a.bg, color: a.text, borderColor: a.border, dotColor: a.dot };
+}
+
+/** True if the logged-in user is covered by any assignee value (their staff id, their unit, or RD for directors) */
+export function isAssignedTo(
+  assignees: string[],
+  me: { email?: string | null; unit?: string | null; role?: string | null; fullName?: string | null },
+): boolean {
+  const words = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter(w => w.length > 1).sort().join(" ");
+  return assignees.some(a => {
+    if (a === "RD") return me.role === "director";
+    if (a === "JBT") return !!me.fullName && me.fullName.toLowerCase().includes("tuason");
+    if (a.startsWith("staff:")) {
+      const st = findStaff(a);
+      if (!st) return false;
+      if (me.email && st.email.toLowerCase() === me.email.toLowerCase()) return true;
+      return !!me.fullName && words(me.fullName) === words(st.fullName);
+    }
+    return !!me.unit && a === me.unit;
+  });
 }

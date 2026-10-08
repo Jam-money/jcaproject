@@ -20,7 +20,7 @@ type AttendanceStatusRow = {
 };
 
 async function fetchAttendanceForDate(date: string): Promise<AttendanceStatusRow[]> {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("attendance_status")
     .select("*")
     .eq("attendance_date", date)
