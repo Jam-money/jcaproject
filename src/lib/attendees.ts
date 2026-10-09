@@ -10,6 +10,9 @@ export const ATTENDEES = [
   { value: "SBB",   label: "SBB",   dot: "#f97316", bg: "#fff7ed", text: "#c2410c", border: "#fdba74", hex: "#f97316" },
 ] as const;
 
+/** Management tags that can respond (RSVP) to events they are invited to */
+export const MANAGEMENT_KEYS = ["RD", "JBT", "SBB"];
+
 export type AttendeeValue = string; // dept codes ("RD","JBT","SOCD","CRASD") OR staff ids ("staff:luperte")
 export type RSVPStatus    = "yes" | "no" | "maybe" | null;
 export type RSVPMap       = Partial<Record<string, RSVPStatus>>;
@@ -141,7 +144,7 @@ export function colorForValue(value: string): typeof ATTENDEES[number] {
  */
 export function activeAttendees(attendees: string[], rsvpMap: RSVPMap): string[] {
   return attendees.filter(a => {
-    if (a === "RD") return rsvpMap["RD"] !== "no";
+    if (MANAGEMENT_KEYS.includes(a)) return rsvpMap[a] !== "no";
     return true;
   });
 }
@@ -190,6 +193,7 @@ export function isAssignedTo(
   return assignees.some(a => {
     if (a === "RD") return me.role === "director";
     if (a === "JBT") return !!me.fullName && me.fullName.toLowerCase().includes("tuason");
+    if (a === "SBB") return !!me.fullName && me.fullName.toLowerCase().includes("balagbis");
     if (a.startsWith("staff:")) {
       const st = findStaff(a);
       if (!st) return false;

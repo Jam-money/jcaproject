@@ -6,6 +6,9 @@ import { Card } from "@/components/ui/card";
 import { format, parseISO } from "date-fns";
 import { Users, Clock, Coffee, LogOut, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarDays as CalendarIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_app/attendance")({ component: AttendancePage });
 
@@ -24,6 +27,30 @@ type AttendanceStatusRow = {
   break_in_status: string;
   day_status: string;
 };
+
+function DatePickerButton({ date, onChange }: { date: string; onChange: (d: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = parseISO(date);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="font-medium w-44 justify-center">
+          <CalendarIcon className="h-4 w-4 mr-2" />{format(selected, "EEE, MMM d, yyyy")}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          captionLayout="dropdown"
+          disabled={{ after: new Date() }}
+          onSelect={d => { if (d) { onChange(format(d, "yyyy-MM-dd")); setOpen(false); } }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function fmtTime(iso: string | null) {
   if (!iso) return "—";
@@ -127,9 +154,7 @@ const [date, setDate] = useState(todayStr);
         {/* Date navigator */}
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={prevDay}><ChevronLeft className="h-4 w-4"/></Button>
-          <span className="font-medium text-sm w-36 text-center">
-            {format(parseISO(date), "EEE, MMM d, yyyy")}
-          </span>
+          <DatePickerButton date={date} onChange={setDate} />
           <Button variant="outline" size="icon" onClick={nextDay} disabled={isToday}><ChevronRight className="h-4 w-4"/></Button>
           {!isToday && (
             <Button variant="outline" size="sm" onClick={() => setDate(format(new Date(), "yyyy-MM-dd"))}>

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -182,12 +182,30 @@ export function CalendarPage() {
     else                      setCursor(addDays(cursor, dir));
   };
 
+  const canEditEv = (ev: EventRow) => canEdit && ev.created_by === myUserId;
   const openNew  = (d?: Date)     => { setEditing(null); setDefaultDate(d); setDialogOpen(true); };
   const openEdit = (ev: EventRow) => { setEditing(ev);   setDialogOpen(true); };
 
+  // Open the event dialog when arriving from a notification (?open=<eventId>)
+  const notifNav = useNavigate();
+  const searchOpen = (useSearch({ strict: false }) as { open?: string }).open;
+  const [openedFromNotif, setOpenedFromNotif] = useState<string | null>(null);
+  useEffect(() => {
+    const id = searchOpen;
+    if (!id || id === openedFromNotif) return;
+    const open = (ev: EventRow) => {
+      setOpenedFromNotif(id);
+      openEdit(ev);
+      void notifNav({ to: "/calendar", replace: true });
+    };
+    const found = events.find(e => e.id === id);
+    if (found) open(found);
+    else void supabase.from("events").select("*").eq("id", id).maybeSingle()
+      .then(({ data }) => { if (data) open(data as EventRow); });
+  }, [searchOpen, openedFromNotif, events]);
+
   const onDrop = async (id: string, target: Date) => {
-    if (!canEdit) return;
-    const ev = events.find(e => e.id === id); if (!ev) return;
+    const ev = events.find(e => e.id === id); if (!ev || !canEditEv(ev)) return;
     const s = parseISO(ev.start_time), e = parseISO(ev.end_time);
     const duration = e.getTime() - s.getTime();
     const ns = new Date(target); ns.setHours(s.getHours(), s.getMinutes());
@@ -284,7 +302,7 @@ export function CalendarPage() {
 
                     return (
                       <div key={`${p.ev.id}-${i}`}
-                        draggable={canEdit}
+                        draggable={canEditEv(p.ev)}
                         onDragStart={e => { e.stopPropagation(); e.dataTransfer.setData("text/plain", p.ev.id); }}
                         onClick={e => { e.stopPropagation(); openEdit(p.ev); }}
                         style={{
@@ -384,7 +402,7 @@ export function CalendarPage() {
 
                       return (
                         <button key={ev.id}
-                          draggable={canEdit}
+                          draggable={canEditEv(ev)}
                           onDragStart={e => e.dataTransfer.setData("text/plain", ev.id)}
                           onClick={() => openEdit(ev)}
                           className="w-full text-left rounded-lg overflow-hidden border border-black/10 hover:brightness-95 transition-all"
@@ -462,7 +480,7 @@ export function CalendarPage() {
         )}
       </Card>
 
-      <EventDialog open={dialogOpen} onOpenChange={setDialogOpen} event={editing} defaultDate={defaultDate} canEdit={canEdit} />
+      <EventDialog open={dialogOpen} onOpenChange={setDialogOpen} event={editing} defaultDate={defaultDate} canEdit={editing ? canEditEv(editing) : canEdit} />
     </div>
   );
 }

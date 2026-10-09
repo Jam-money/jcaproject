@@ -30,3 +30,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local secrets
+.dev.vars
+
+# Raw original photos (use public/slides instead)
+public/assets/

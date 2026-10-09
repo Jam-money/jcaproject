@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { CalendarCheck2, Loader2 } from "lucide-react";
+import { LoginSlideshow } from "@/components/app/LoginSlideshow";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
@@ -18,15 +19,16 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col justify-between gradient-primary text-primary-foreground p-12">
-        <div className="flex items-center gap-2 text-lg font-semibold">
+      <div className="hidden lg:flex flex-col justify-between relative text-white p-12 overflow-hidden">
+        <LoginSlideshow />
+        <div className="relative z-10 flex items-center gap-2 text-lg font-semibold drop-shadow">
           <CalendarCheck2 className="h-6 w-6" /> PSA GovTrack
         </div>
-        <div>
-          <h1 className="text-4xl font-bold leading-tight">Schedules, meetings and tasks in one platform.</h1>
+        <div className="relative z-10">
+          <h1 className="text-4xl font-bold leading-tight drop-shadow-lg">Schedules, meetings and tasks in one platform.</h1>
         </div>
-        <div className="text-xs text-primary-foreground/70">
-          <p>© {new Date().getFullYear()} Office of the Regional Director</p>
+        <div className="relative z-10 text-xs text-white/80">
+          <p>© {new Date().getFullYear()} Regional Statistical Services Office X</p>
         </div>
       </div>
 

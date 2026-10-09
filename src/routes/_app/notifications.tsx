@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Bell, CheckCheck } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useAuth } from "@/lib/auth";
+import { resolveNotifLink } from "@/lib/notif-link";
 
 export const Route = createFileRoute("/_app/notifications")({ component: Notifications });
 
@@ -35,7 +36,8 @@ function Notifications() {
       await supabase.from("notifications").update({ read: true }).eq("id", n.id);
       setItems(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
     }
-    if (n.link) void navigate({ to: n.link });
+    const target = await resolveNotifLink(n);
+    if (target) void navigate({ to: target.path as never, search: target.search as never });
   };
 
   return (

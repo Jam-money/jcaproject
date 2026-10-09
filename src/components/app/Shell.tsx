@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveNotifLink } from "@/lib/notif-link";
 import { format, parseISO } from "date-fns";
 import { InstallButton } from "@/components/ui/InstallPrompt";
 
@@ -181,7 +182,9 @@ export function Shell() {
                   )}
                   {notifItems.map(n => (
                     <li key={n.id}
-                      onClick={() => { if (!n.read) markOneRead(n.id); if (n.link) { setNotifOpen(false); navigate({ to: n.link }); } }}
+                      onClick={async () => { if (!n.read) markOneRead(n.id); if (n.link) { setNotifOpen(false);
+                        const target = await resolveNotifLink(n);
+                        if (target) navigate({ to: target.path as never, search: target.search as never }); } }}
                       className={[
                         "px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors",
                         !n.read ? "bg-primary/5" : "",

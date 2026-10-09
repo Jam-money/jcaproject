@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Plus, MapPin, Clock, Search } from "lucide-react";
-import { format, parseISO, isPast } from "date-fns";
+import { format, parseISO, isPast, endOfWeek } from "date-fns";
 import { EventDialog } from "@/components/app/EventDialog";
 import { useAuth } from "@/lib/auth";
 import type { EventRow } from "@/lib/db";
@@ -15,9 +15,10 @@ import { eventTypeLabel } from "@/lib/db";
 export const Route = createFileRoute("/_app/meetings")({ component: Meetings });
 
 function Meetings() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const canEdit = role === "admin";
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const [q, setQ] = useState(""); const [open, setOpen] = useState(false); const [editing, setEditing] = useState<EventRow | null>(null);
 
   useEffect(() => {
@@ -31,8 +32,12 @@ function Meetings() {
   }, []);
 
   const filtered = events.filter(e => !q || e.title.toLowerCase().includes(q.toLowerCase()) || (e.location ?? "").toLowerCase().includes(q.toLowerCase()));
-  const upcoming = filtered.filter(e => !isPast(parseISO(e.end_time)));
+  const upcoming = filtered.filter(e => !isPast(parseISO(e.end_time)))
+    .sort((a, b) => parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime());
   const past = filtered.filter(e => isPast(parseISO(e.end_time)));
+  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 }).getTime();
+  const thisWeek = upcoming.filter(e => parseISO(e.start_time).getTime() <= weekEnd);
+  const openEvent = (ev: EventRow) => { setEditing(ev); setOpen(true); };
 
   return (
     <div className="space-y-6 max-w-5xl w-full">
@@ -50,22 +55,27 @@ function Meetings() {
       </div>
 
       <section>
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Upcoming · {upcoming.length}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {upcoming.map(ev => <MeetingCard key={ev.id} ev={ev} onClick={()=>{setEditing(ev); setOpen(true);}}/>)}
-          {upcoming.length === 0 && <p className="text-sm text-muted-foreground">No upcoming meetings.</p>}
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Today & this week · {thisWeek.length}</h2>
+        <div className="grid grid-cols-1 gap-3">
+          {thisWeek.map(ev => <MeetingCard key={ev.id} ev={ev} onClick={()=>openEvent(ev)}/>)}
+          {thisWeek.length === 0 && <p className="text-sm text-muted-foreground">No meetings today or this week.</p>}
         </div>
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Past · {past.length}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {past.slice(0,12).map(ev => <MeetingCard key={ev.id} ev={ev} onClick={()=>{setEditing(ev); setOpen(true);}} muted/>)}
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">History · {past.length}</h2>
+        <div className="grid grid-cols-1 gap-3">
+          {(showHistory ? past : past.slice(0,3)).map(ev => <MeetingCard key={ev.id} ev={ev} onClick={()=>openEvent(ev)} muted/>)}
           {past.length === 0 && <p className="text-sm text-muted-foreground">No past meetings.</p>}
         </div>
+        {past.length > 3 && (
+          <Button variant="outline" size="sm" className="mt-3" onClick={()=>setShowHistory(v=>!v)}>
+            {showHistory ? "Show less" : `View more (${past.length - 3})`}
+          </Button>
+        )}
       </section>
 
-      <EventDialog open={open} onOpenChange={setOpen} event={editing} canEdit={canEdit}/>
+      <EventDialog open={open} onOpenChange={setOpen} event={editing} canEdit={editing ? editing.created_by === user?.id : canEdit}/>
     </div>
   );
 }

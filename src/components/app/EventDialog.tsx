@@ -18,7 +18,7 @@ import {
   MapPin, CalendarDays,
 } from "lucide-react";
 import {
-  ATTENDEES, AttendeeValue, RSVPStatus, RSVPMap,
+  ATTENDEES, AttendeeValue, RSVPStatus, RSVPMap, MANAGEMENT_KEYS,
   attendeePillStyle, colorForValue, labelForValue,
   staffByDept, staffTag, isAssignedTo, loadUnitOverrides,
 } from "@/lib/attendees";
@@ -31,7 +31,7 @@ async function notifyDirectors(title: string, body: string, link = "/calendar") 
   );
 }
 
-async function notifyReportAssignees(assignees: string[], selfId: string, title: string, body: string) {
+async function notifyReportAssignees(assignees: string[], selfId: string, title: string, body: string, link = "/reports", what = "report assignees") {
   if (!assignees.length) return;
   const [{ data: profs }, { data: dirs }] = await Promise.all([
     (supabase as any).from("profiles").select("id,email,full_name,unit") as Promise<{ data: { id: string; email: string | null; full_name: string | null; unit: string | null }[] | null }>,
@@ -41,11 +41,16 @@ async function notifyReportAssignees(assignees: string[], selfId: string, title:
   const targets = (profs ?? []).filter(p => p.id !== selfId && isAssignedTo(assignees, {
     email: p.email, unit: p.unit, fullName: p.full_name, role: directors.has(p.id) ? "director" : null,
   }));
-  if (!targets.length) return toast.warning("No matching user accounts found to notify for the selected report assignees.");
+  if (!targets.length) return toast.warning(`No matching user accounts found to notify for the selected ${what}.`);
   const { error } = await (supabase.rpc as any)("notify_users", {
-    p_user_ids: targets.map(p => p.id), p_title: title, p_body: body, p_link: "/reports",
+    p_user_ids: targets.map(p => p.id), p_title: title, p_body: body, p_link: link,
   });
-  if (error) toast.warning("Could not send report notifications: " + error.message);
+  if (error) toast.warning("Could not send notifications: " + error.message);
+}
+
+async function notifyOrganizer(creatorId: string | null | undefined, selfId: string, title: string, body: string, link = "/calendar") {
+  if (!creatorId || creatorId === selfId) return;
+  await (supabase.rpc as any)("notify_users", { p_user_ids: [creatorId], p_title: title, p_body: body, p_link: link });
 }
 
 async function notifyAdmins(title: string, body: string, link = "/calendar") {
@@ -273,8 +278,8 @@ function RSVPSummaryRow({ label, colors, status, note }: {
         {label}
       </span>
 
-      {/* Only RD has a real RSVP status; everyone else always attends */}
-      {colors.value === "RD" ? (
+      {/* Only management (RD/JBT/SBB) have a real RSVP status; everyone else always attends */}
+      {MANAGEMENT_KEYS.includes(colors.value) ? (
         s ? (
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${s.cls}`}>
             {s.icon}{s.label}
@@ -288,7 +293,7 @@ function RSVPSummaryRow({ label, colors, status, note }: {
         </span>
       )}
 
-      {note && colors.value === "RD" && (
+      {note && MANAGEMENT_KEYS.includes(colors.value) && (
         <span className="text-xs text-muted-foreground truncate ml-auto max-w-[160px]" title={note}>
           💬 {note}
         </span>
@@ -300,8 +305,8 @@ function RSVPSummaryRow({ label, colors, status, note }: {
 // ── Calendar bar preview ──────────────────────────────────────────────────────
 function CalendarBarPreview({ attendees, rsvpMap }: { attendees: string[]; rsvpMap: RSVPMap }) {
   const style = attendeePillStyle(attendees, rsvpMap);
-  const rdDeclined   = attendees.includes("RD") && rsvpMap["RD"] === "no";
-  const activeCount  = attendees.length - (rdDeclined ? 1 : 0);
+  const declined     = attendees.filter(a => MANAGEMENT_KEYS.includes(a) && rsvpMap[a] === "no");
+  const activeCount  = attendees.length - declined.length;
 
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
@@ -311,8 +316,8 @@ function CalendarBarPreview({ attendees, rsvpMap }: { attendees: string[]; rsvpM
       <div className="h-6 w-full rounded" style={style} />
       <div className="flex gap-3 text-[11px] text-muted-foreground">
         <span className="text-green-600 font-medium">✓ {activeCount} attending</span>
-        {rdDeclined && (
-          <span className="text-red-500 font-medium">✗ RD declined</span>
+        {declined.length > 0 && (
+          <span className="text-red-500 font-medium">✗ {declined.map(labelForValue).join(", ")} declined</span>
         )}
       </div>
     </div>
@@ -326,7 +331,7 @@ export function EventDialog({
   open: boolean; onOpenChange: (o: boolean) => void;
   event: EventRow | null; defaultDate?: Date; canEdit: boolean;
 }) {
-  const { role, user: authUser } = useAuth();
+  const { role, user: authUser, profile } = useAuth();
   const [, bumpColors] = useState(0);
   useEffect(() => {
     if (open) void loadUnitOverrides().then(() => bumpColors(n => n + 1));
@@ -354,7 +359,6 @@ export function EventDialog({
   const [rsvpNotes, setRsvpNotes] = useState<Partial<Record<string, string>>>({});
 
   // RD UI state
-  const [myRsvp, setMyRsvp]                  = useState<RSVPStatus>(null);
   const [showProposeTime, setShowProposeTime] = useState(false);
   const [proposeStart, setProposeStart]       = useState("");
   const [proposeEnd, setProposeEnd]           = useState("");
@@ -366,6 +370,12 @@ export function EventDialog({
   const [creatorName, setCreatorName]         = useState<string | null>(null);
 
   const [adminRsvpCollapsed, setAdminRsvpCollapsed] = useState(false);
+
+  // Which management tag (RD / JBT / SBB) the logged-in user answers for in this event
+  const me = { email: profile?.email ?? authUser?.email, fullName: profile?.full_name, role, unit: profile?.unit };
+  const myKey = MANAGEMENT_KEYS.find(k => attendees.includes(k) && isAssignedTo([k], me)) ?? null;
+  const myRsvp: RSVPStatus = myKey ? rsvpMap[myKey] ?? null : null;
+  useEffect(() => { setDirectorNote(myKey ? rsvpNotes[myKey] ?? "" : ""); }, [myKey, rsvpNotes]);
 
   useEffect(() => {
     if (event) {
@@ -391,10 +401,6 @@ export function EventDialog({
         rawNotes && typeof rawNotes === "object" ? rawNotes : {};
       setRsvpNotes(nts);
 
-      // RD's status specifically
-      setMyRsvp(map["RD"] ?? null);
-      setDirectorNote(nts["RD"] ?? "");
-
       setNeedsReport(false); setReportDue(""); setReportBy([]); setOrigReportBy([]); setReportCategory("");
       void (supabase as any).from("event_reports").select("deadline,assignees,category").eq("event_id", event.id).maybeSingle().then(({ data }: any) => {
         if (!data) return;
@@ -419,7 +425,6 @@ export function EventDialog({
       setStart(format(s, "yyyy-MM-dd'T'HH:mm"));
       setEnd(format(e, "yyyy-MM-dd'T'HH:mm"));
       setRsvpMap({}); setRsvpNotes({});
-      setMyRsvp(null); setDirectorNote("");
       setCreatorName(null);
       setNeedsReport(false); setReportDue(""); setReportBy([]); setReportCategory("");
     }
@@ -467,6 +472,13 @@ export function EventDialog({
 
     await logAudit("event", res.data.id, event ? "updated" : "created", { title });
     const evDate = format(new Date(start), "MMM d, yyyy 'at' h:mm a");
+    const prevAttendees: string[] = (event as any)?.attendees ?? [];
+    await notifyReportAssignees(
+      attendees.filter(a => !prevAttendees.includes(a)), user!.id,
+      `You're invited: ${title}`,
+      `${evDate}${location ? ` · ${location}` : ""}${MANAGEMENT_KEYS.some(k => attendees.includes(k)) ? " — please respond (Going?)" : ""}`,
+      `/calendar?open=${res.data.id}`, "attendees",
+    );
     if (event) {
       await notifyDirectors(`Event updated: ${title}`, `Rescheduled or updated — ${evDate}${location ? ` · ${location}` : ""}`);
     } else {
@@ -489,34 +501,30 @@ export function EventDialog({
 
   // ── RD: save RSVP ───────────────────────────────────────────────────────
   const saveRsvp = async (status: RSVPStatus) => {
-    if (!event) return;
+    if (!event || !myKey) return;
     setRsvpBusy(true);
 
     // Optimistic update — update UI immediately before DB call
     const previousMap  = rsvpMap;
-    const previousRsvp = myRsvp;
-    const updatedMap: RSVPMap = { ...(rsvpMap ?? {}), RD: status };
-    setRsvpMap(updatedMap);
-    setMyRsvp(status);
+    setRsvpMap({ ...(rsvpMap ?? {}), [myKey]: status });
 
-    const { error } = await supabase
-      .from("events")
-      .update({ rsvp_responses: updatedMap })
-      .eq("id", event.id);
+    const { error } = await (supabase.rpc as any)("set_event_rsvp", { p_event_id: event.id, p_key: myKey, p_status: status });
 
     setRsvpBusy(false);
 
     if (error) {
       // Rollback on failure
       setRsvpMap(previousMap);
-      setMyRsvp(previousRsvp);
       return toast.error(error.message);
     }
 
-    const label = status === "yes" ? "Going ✅" : status === "no" ? "Not going ❌" : "Maybe 🤔";
-    await notifyAdmins(
-      `RD responded: ${label}`,
-      `For event "${event.title}" — RD marked as ${label.replace(/[✅❌🤔]/g, "").trim()}.`,
+    const label = status === "yes" ? "Going" : status === "no" ? "Not going" : "Maybe";
+    const who = profile?.full_name || labelForValue(myKey);
+    await notifyOrganizer(
+      event.created_by, authUser?.id ?? "",
+      `${who} responded: ${label}`,
+      `For event "${event.title}" — ${who} marked as ${label}.`,
+      `/calendar?open=${event.id}`,
     );
     toast.success(
       status === "yes"   ? "✅ Marked as Going!" :
@@ -535,36 +543,40 @@ export function EventDialog({
     }).eq("id", event.id);
     setRsvpBusy(false);
     if (error) return toast.error(error.message);
-    await notifyAdmins(
-      `RD proposed a new time`,
+    await notifyOrganizer(
+      event.created_by, authUser?.id ?? "",
+      `${profile?.full_name || "Management"} proposed a new time`,
       `For event "${event.title}" — please review the proposed schedule.`,
+      `/calendar?open=${event.id}`,
     );
     toast.success("Proposed time sent to admin");
     setShowProposeTime(false);
   };
 
   const saveNote = async () => {
-    if (!event) return;
+    if (!event || !myKey) return;
     setRsvpBusy(true);
-    const updatedNotes = { ...(rsvpNotes ?? {}), RD: directorNote };
-    const { error } = await supabase.from("events").update({ rsvp_notes: updatedNotes }).eq("id", event.id);
+    const updatedNotes = { ...(rsvpNotes ?? {}), [myKey]: directorNote };
+    const { error } = await (supabase.rpc as any)("set_event_rsvp", { p_event_id: event.id, p_key: myKey, p_note: directorNote, p_set_note: true });
     setRsvpBusy(false);
     if (error) return toast.error(error.message);
     setRsvpNotes(updatedNotes);
-    await notifyAdmins(
-      `RD added a note`,
+    await notifyOrganizer(
+      event.created_by, authUser?.id ?? "",
+      `${profile?.full_name || labelForValue(myKey)} added a note`,
       `For event "${event.title}": "${directorNote}"`,
+      `/calendar?open=${event.id}`,
     );
     toast.success("Note saved"); setShowAddNote(false);
   };
 
-  // Admin badge counts — only RD can RSVP
-  const rdInEvent    = attendees.includes("RD");
-  const rdStatus     = rsvpMap["RD"] ?? null;
-  const yesCount     = rdInEvent && rdStatus === "yes"   ? 1 : 0;
-  const noCount      = rdInEvent && rdStatus === "no"    ? 1 : 0;
-  const maybeCount   = rdInEvent && rdStatus === "maybe" ? 1 : 0;
-  const pendingCount = rdInEvent && !rdStatus             ? 1 : 0;
+  // Admin badge counts — only management (RD/JBT/SBB) can RSVP
+  const mgmtInEvent  = attendees.filter(a => MANAGEMENT_KEYS.includes(a));
+  const rdInEvent    = mgmtInEvent.length > 0;
+  const yesCount     = mgmtInEvent.filter(k => rsvpMap[k] === "yes").length;
+  const noCount      = mgmtInEvent.filter(k => rsvpMap[k] === "no").length;
+  const maybeCount   = mgmtInEvent.filter(k => rsvpMap[k] === "maybe").length;
+  const pendingCount = mgmtInEvent.filter(k => !rsvpMap[k]).length;
   const hasDeclines  = noCount > 0;
 
   return (
@@ -831,21 +843,21 @@ export function EventDialog({
                   <div className="flex items-center gap-1">
                     {yesCount > 0 && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
-                        <CheckCircle2 className="w-3 h-3" />RD going
+                        <CheckCircle2 className="w-3 h-3" />{yesCount} going
                       </span>
                     )}
                     {maybeCount > 0 && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
-                        <HelpCircle className="w-3 h-3" />RD maybe
+                        <HelpCircle className="w-3 h-3" />{maybeCount} maybe
                       </span>
                     )}
                     {hasDeclines && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 border border-red-200">
-                        <XCircle className="w-3 h-3" />RD declined
+                        <XCircle className="w-3 h-3" />{noCount} declined
                       </span>
                     )}
                     {pendingCount > 0 && (
-                      <span className="text-[10px] text-muted-foreground">RD pending</span>
+                      <span className="text-[10px] text-muted-foreground">{pendingCount} pending</span>
                     )}
                   </div>
                 )}
@@ -862,8 +874,8 @@ export function EventDialog({
                     key={key}
                     label={labelForValue(key)}
                     colors={colorForValue(key)}
-                    status={key === "RD" ? (rsvpMap["RD"] ?? null) : null}
-                    note={key === "RD" ? rsvpNotes["RD"] : undefined}
+                    status={MANAGEMENT_KEYS.includes(key) ? (rsvpMap[key] ?? null) : null}
+                    note={MANAGEMENT_KEYS.includes(key) ? rsvpNotes[key] : undefined}
                   />
                 ))}
                 <div className="p-3">
@@ -876,7 +888,7 @@ export function EventDialog({
 
         {/* ══ RD: GOING? SECTION ════════════════════════════════════════════
             Only shown when RD is in the attendees list                       */}
-        {!canEdit && !!event && attendees.includes("RD") && (
+        {!canEdit && !!event && !!myKey && (
           <div className="mt-2 rounded-xl border border-border bg-muted/30 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
               <span className="text-sm font-semibold text-foreground">Going?</span>
@@ -997,7 +1009,7 @@ export function EventDialog({
         )}
 
         {/* RD not in attendees list */}
-        {!canEdit && !!event && !attendees.includes("RD") && (
+        {!canEdit && !!event && !myKey && !isAssignedTo(attendees, me) && (
           <div className="mt-2 rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
             You are not listed as an attendee for this event.
           </div>
